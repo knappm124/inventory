@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'utilities/collections.dart';
+import 'utilities/itemwidgets.dart';
 
 void main() {
   runApp(MainApp());
@@ -57,40 +58,6 @@ class MainApp extends StatelessWidget {
   }
 }
 
-class ItemRow extends StatelessWidget {
-  final Item i;
-
-  const ItemRow({super.key, required this.i});
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey, width: 1.0),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text("Name: ${i.name}"),
-            Text("Price: ${i.price.toString()}"),
-            Text("Location: ${i.location}"),
-            Text("Status: ${i.status}"),
-            for (String s in i.tags.keys)
-              Row(
-                children: [
-                  Text("$s: "),
-                  for (String o in i.tags[s]!) Text(o + " "),
-                ],
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class NavBar extends StatelessWidget {
   const NavBar({super.key});
 
@@ -119,13 +86,24 @@ class Scroll extends StatelessWidget {
         Text("My Inventory"),
         Padding(padding: EdgeInsets.all(8.0)),
         Expanded(
-          child: ListView.separated(
+          child: ReorderableListView.builder(
+
             itemCount: collections.items.length,
             itemBuilder: (context, index) {
-              return ItemRow(i: collections.items.elementAt(index));
+              return Container(
+                 key: ValueKey(collections.items.elementAt(index)),
+                 child: ItemRow(i: collections.items.elementAt(index), index: index)
+              );
             },
-            separatorBuilder: (context, index) {
-              return Padding(padding: EdgeInsets.all(8.0));
+            onReorderItem: (oldIndex, newIndex) {
+              if (newIndex > oldIndex) {
+                newIndex -= 1;
+              }
+              final item = collections.items.elementAt(oldIndex);
+              List<Item> tempList = collections.items.toList();
+              tempList.removeAt(oldIndex);
+              tempList.insert(newIndex, item);
+              collections.items = tempList.toSet();
             },
           ),
         ),
