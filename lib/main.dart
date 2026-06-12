@@ -1,77 +1,168 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'utilities/newitem.dart';
 import 'utilities/collections.dart';
 import 'utilities/itemwidgets.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  if (!kIsWeb) {
+    // Keep this only for non-web platforms where path_provider is available.
+    // The app now uses a web-safe fallback for Chrome.
+  }
   runApp(MainApp());
 }
 
-class MainApp extends StatelessWidget {
-  final Collections collections;
+class MainApp extends StatefulWidget {
+  const MainApp({super.key});
 
-  MainApp({super.key})
-    : collections = Collections(
-        {
-          Item("1", "Bird Egg", 20, "Etsy", "WIP", {
-            "Color": {"red", "blue"},
-            "Size": {"chicken"},
-          }),
-          Item("2", "Star Egg", 20, "Etsy", "Listed", {
-            "Color": {"yellow", "red"},
-            "Symbols": {"star"},
-          }),
-          Item("3", "Deer Egg", 20, "Etsy", "Sold", {
-            "Season": {"fall"},
-            "Size": {"quail"},
-          }),
-          Item("4", "Cross Egg", 20, "Etsy", "Returned", {
-            "Color": {"green", "blue"},
-            "Season": {"easter"},
-            "Symbols": {"cross"},
-          }),
-        },
-        {
-          Tag("1", "Color", {
-            "red",
-            "orange",
-            "yellow",
-            "green",
-            "blue",
-            "purple",
-          }),
-          Tag("2", "Size", {"quail", "chicken", "duck", "goose", "ostrich"}),
-          Tag("3", "Season", {"Easter", "Christmas", "Fall", "Spring"}),
-          Tag("4", "Symbols", {"star", "deer", "chicken", "flower", "cross"}),
-          Tag("5", "Division", {"star", "band", "triangles", "diagonal"}),
-        },
-        {"Etsy", "Home", "General Store"},
-        {"WIP", "Sold", "Listed", "Returned"},
-      );
+  @override
+  State<MainApp> createState() => _MainAppState();
+}
+
+class _MainAppState extends State<MainApp> {
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+  Collections? _collections;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCollections();
+  }
+
+  Future<void> _loadCollections() async {
+    final savedItems = await FileMethods().readItems();
+    final savedTags = await FileMethods().readTags();
+
+    final loadedCollections = Collections(
+      savedItems.isEmpty ? _defaultItems() : savedItems,
+      savedTags.isEmpty ? _defaultTags() : savedTags,
+      {"Etsy", "Home", "General Store"},
+      {"WIP", "Sold", "Listed", "Returned"},
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _collections = loadedCollections;
+    });
+  }
+
+  Future<void> _openNewItem() async {
+    if (_collections == null) {
+      return;
+    }
+
+    final result = await _navigatorKey.currentState?.push<Item>(
+      MaterialPageRoute(
+        builder: (context) => NewItem(collections: _collections!),
+      ),
+    );
+
+    if (!mounted || result == null) {
+      return;
+    }
+
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_collections == null) {
+      return MaterialApp(
+        home: Scaffold(body: Center(child: CircularProgressIndicator())),
+      );
+    }
+
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       home: Scaffold(
-        body: Center(child: Scroll(collections: collections)),
+        body: Center(
+          child: Scroll(collections: _collections!, onAddPressed: _openNewItem),
+        ),
       ),
     );
   }
 }
 
+Set<Item> _defaultItems() {
+  return {
+    Item("1", "Bird Egg", 20, "Etsy", "WIP", {
+      "Color": {"red", "blue"},
+      "Size": {"chicken"},
+    }),
+    Item("2", "Star Egg", 20, "Etsy", "Listed", {
+      "Color": {"yellow", "red"},
+      "Symbols": {"star"},
+    }),
+    Item("3", "Deer Egg", 20, "Etsy", "Sold", {
+      "Season": {"fall"},
+      "Size": {"quail"},
+    }),
+    Item("4", "Cross Egg", 20, "Etsy", "Returned", {
+      "Color": {"green", "blue"},
+      "Season": {"easter"},
+      "Symbols": {"cross"},
+    }),
+  };
+}
+
+Set<Tag> _defaultTags() {
+  return {
+    Tag("1", "Color", {
+      "Red",
+      "Orange",
+      "Yellow",
+      "Green",
+      "Blue",
+      "Purple",
+      "Pink",
+      "Brown",
+      "Black",
+    }),
+    Tag("2", "Size", {
+      "Quail",
+      "Pullet",
+      "Chicken",
+      "Duck",
+      "Goose",
+      "Rhea",
+      "Ostrich",
+    }),
+    Tag("3", "Occassion", {
+      "Baby",
+      "Christmas",
+      "Easter",
+      "Fall",
+      "Spring",
+      "Wedding",
+    }),
+    Tag("4", "Symbols", {"Animal", "Person", "Plants", "Religious", "Star"}),
+    Tag("5", "Division", {
+      "Star",
+      "Band",
+      "Triangles",
+      "Diagonal Band",
+      "circles",
+      "Four Panels",
+    }),
+  };
+}
+
 class NavBar extends StatelessWidget {
-  const NavBar({super.key});
+  final VoidCallback onAddPressed;
+
+  const NavBar({super.key, required this.onAddPressed});
 
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween, 
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         IconButton(onPressed: null, icon: Icon(Icons.filter_alt_outlined)),
-        IconButton(onPressed: ()=>{
-          Navigator.push(context,
-          MaterialPageRoute(builder: (context) => const NewItem()))
-        }, icon: Icon(Icons.add)),
+        IconButton(onPressed: onAddPressed, icon: Icon(Icons.add)),
         IconButton(onPressed: null, icon: Icon(Icons.menu)),
       ],
     );
@@ -80,8 +171,13 @@ class NavBar extends StatelessWidget {
 
 class Scroll extends StatelessWidget {
   final Collections collections;
+  final VoidCallback onAddPressed;
 
-  const Scroll({super.key, required this.collections});
+  const Scroll({
+    super.key,
+    required this.collections,
+    required this.onAddPressed,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -95,8 +191,11 @@ class Scroll extends StatelessWidget {
             itemCount: collections.items.length,
             itemBuilder: (context, index) {
               return Container(
-                 key: ValueKey(collections.items.elementAt(index)),
-                 child: ItemRow(i: collections.items.elementAt(index), index: index)
+                key: ValueKey(collections.items.elementAt(index)),
+                child: ItemRow(
+                  i: collections.items.elementAt(index),
+                  index: index,
+                ),
               );
             },
             onReorderItem: (oldIndex, newIndex) {
@@ -108,11 +207,12 @@ class Scroll extends StatelessWidget {
               tempList.removeAt(oldIndex);
               tempList.insert(newIndex, item);
               collections.items = tempList.toSet();
+              collections.persistChanges();
             },
           ),
         ),
         Padding(padding: EdgeInsets.all(8.0)),
-        NavBar(),
+        NavBar(onAddPressed: onAddPressed),
       ],
     );
   }
