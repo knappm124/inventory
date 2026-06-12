@@ -66,7 +66,7 @@ class ItemRow extends StatelessWidget {
                 Row(
                   children: [
                     Text("$s: "),
-                    for (String o in i.tags[s]!) Text(o + " "),
+                    for (String o in i.tags[s]!) Text("$o "),
                   ],
                 ),
             ],
@@ -104,7 +104,7 @@ class EditableItem extends StatelessWidget {
                 Row(
                   children: [
                     Text("$s: "),
-                    for (String o in i.tags[s]!) Text(o + " "),
+                    for (String o in i.tags[s]!) Text("$o "),
                   ],
                 ),
             ],

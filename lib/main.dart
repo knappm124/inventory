@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'utilities/newitem.dart';
 import 'utilities/collections.dart';
 import 'utilities/itemwidgets.dart';
 
@@ -67,7 +68,10 @@ class NavBar extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween, 
       children: [
         IconButton(onPressed: null, icon: Icon(Icons.filter_alt_outlined)),
-        IconButton(onPressed: null, icon: Icon(Icons.add)),
+        IconButton(onPressed: ()=>{
+          Navigator.push(context,
+          MaterialPageRoute(builder: (context) => const NewItem()))
+        }, icon: Icon(Icons.add)),
         IconButton(onPressed: null, icon: Icon(Icons.menu)),
       ],
     );
@@ -87,7 +91,7 @@ class Scroll extends StatelessWidget {
         Padding(padding: EdgeInsets.all(8.0)),
         Expanded(
           child: ReorderableListView.builder(
-
+            buildDefaultDragHandles: false,
             itemCount: collections.items.length,
             itemBuilder: (context, index) {
               return Container(
