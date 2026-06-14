@@ -1,5 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart' as p;
 import 'collections.dart';
 
 class NewItem extends StatefulWidget {
@@ -16,6 +21,7 @@ class _NewItemState extends State<NewItem> {
   final TextEditingController _priceController = TextEditingController();
   String _location = 'Home';
   String _status = 'WIP';
+  String _imagePath = '';
   final Map<String, Set<String>> _selectedTagValues = {};
 
   @override
@@ -50,6 +56,7 @@ class _NewItemState extends State<NewItem> {
       price,
       _location,
       _status,
+      _imagePath,
       selectedTags,
     );
 
@@ -79,6 +86,14 @@ class _NewItemState extends State<NewItem> {
           children: [
             NewItemHeader(onSave: _saveItem),
             NewName(controller: _nameController),
+            ImageUploaderScreen(
+              initialImagePath: _imagePath,
+              onImageSelected: (imagePath) {
+                setState(() {
+                  _imagePath = imagePath;
+                });
+              },
+            ),
             NewPrice(controller: _priceController),
             LocationChoice(
               value: _location,
@@ -254,18 +269,142 @@ class TagSelectorRow extends StatelessWidget {
         children: [
           Text(tagName, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 6),
-          SegmentedButton<String>(
-            multiSelectionEnabled: true,
-            emptySelectionAllowed: true,
-            showSelectedIcon: true,
-            selected: selectedValues,
-            segments: options
-                .map(
-                  (option) =>
-                      ButtonSegment<String>(value: option, label: Text(option)),
-                )
-                .toList(),
-            onSelectionChanged: onSelectionChanged,
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: options.map((option) {
+              final isSelected = selectedValues.contains(option);
+              return ChoiceChip(
+                label: Text(option),
+                selected: isSelected,
+                onSelected: (selected) {
+                  final updatedSelection = Set<String>.from(selectedValues);
+                  if (selected) {
+                    updatedSelection.add(option);
+                  } else {
+                    updatedSelection.remove(option);
+                  }
+                  onSelectionChanged(updatedSelection);
+                },
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class ImageUploaderScreen extends StatefulWidget {
+  final String initialImagePath;
+  final ValueChanged<String> onImageSelected;
+
+  const ImageUploaderScreen({
+    super.key,
+    required this.initialImagePath,
+    required this.onImageSelected,
+  });
+
+  @override
+  State<ImageUploaderScreen> createState() => _ImageUploaderScreenState();
+}
+
+class _ImageUploaderScreenState extends State<ImageUploaderScreen> {
+  File? _savedImage;
+  final ImagePicker _picker = ImagePicker();
+
+  @override
+  void initState() {
+    super.initState();
+    _syncImage(widget.initialImagePath);
+  }
+
+  @override
+  void didUpdateWidget(covariant ImageUploaderScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialImagePath != widget.initialImagePath) {
+      _syncImage(widget.initialImagePath);
+    }
+  }
+
+  void _syncImage(String imagePath) {
+    if (imagePath.isEmpty) {
+      setState(() {
+        _savedImage = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _savedImage = File(imagePath);
+    });
+  }
+
+  // Function to pick and save the image locally
+  Future<void> _pickAndSaveImage() async {
+    try {
+      final XFile? pickedFile = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85, // Optional compression
+      );
+
+      if (pickedFile == null) return; // User canceled
+
+      final Directory appDocDir = await p.getApplicationDocumentsDirectory();
+      final String fileName = path.basename(pickedFile.path);
+      final String targetPath = path.join(appDocDir.path, fileName);
+      final File localImage = await File(pickedFile.path).copy(targetPath);
+
+      widget.onImageSelected(localImage.path);
+      if (mounted) {
+        setState(() {
+          _savedImage = localImage;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error saving image: $e')));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 250,
+            height: 250,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey[400]!),
+            ),
+            child: _savedImage != null && _savedImage!.existsSync()
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(11),
+                    child: Image.file(_savedImage!, fit: BoxFit.cover),
+                  )
+                : const Icon(
+                    Icons.image_not_supported,
+                    size: 80,
+                    color: Colors.grey,
+                  ),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: _pickAndSaveImage,
+            icon: const Icon(Icons.upload_file),
+            label: const Text('Upload & Save Image'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              textStyle: const TextStyle(fontSize: 16),
+            ),
           ),
         ],
       ),

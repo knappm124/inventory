@@ -88,25 +88,7 @@ class _MainAppState extends State<MainApp> {
 }
 
 Set<Item> _defaultItems() {
-  return {
-    Item("1", "Bird Egg", 20, "Etsy", "WIP", {
-      "Color": {"red", "blue"},
-      "Size": {"chicken"},
-    }),
-    Item("2", "Star Egg", 20, "Etsy", "Listed", {
-      "Color": {"yellow", "red"},
-      "Symbols": {"star"},
-    }),
-    Item("3", "Deer Egg", 20, "Etsy", "Sold", {
-      "Season": {"fall"},
-      "Size": {"quail"},
-    }),
-    Item("4", "Cross Egg", 20, "Etsy", "Returned", {
-      "Color": {"green", "blue"},
-      "Season": {"easter"},
-      "Symbols": {"cross"},
-    }),
-  };
+  return {};
 }
 
 Set<Tag> _defaultTags() {
@@ -141,12 +123,12 @@ Set<Tag> _defaultTags() {
     }),
     Tag("4", "Symbols", {"Animal", "Person", "Plants", "Religious", "Star"}),
     Tag("5", "Division", {
-      "Star",
       "Band",
-      "Triangles",
+      "Circles",
       "Diagonal Band",
-      "circles",
       "Four Panels",
+      "Star",
+      "Triangles",
     }),
   };
 }

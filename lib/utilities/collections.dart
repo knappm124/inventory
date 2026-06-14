@@ -146,9 +146,14 @@ class Collections {
     unawaited(saveToDisk());
   }
 
-  Collections addItem(Item i) {
+  void _upsertItem(Item i) {
+    items.removeWhere((existingItem) => existingItem.id == i.id);
     items.add(i);
     persistChanges();
+  }
+
+  Collections addItem(Item i) {
+    _upsertItem(i);
     return this;
   }
 
@@ -202,9 +207,7 @@ class Collections {
   }
 
   Collections editItem(Item i) {
-    items.removeWhere((Item item) => item.id == i.id);
-    items.add(i);
-    persistChanges();
+    _upsertItem(i);
     return this;
   }
 }
@@ -216,9 +219,10 @@ class Item {
   double price;
   String location;
   String status;
+  String img;
   Map<String, Set<String>> tags;
 
-  Item(this.id, this.name, this.price, this.location, this.status, this.tags);
+  Item(this.id, this.name, this.price, this.location, this.status, this.img, this.tags);
 
   Map<String, dynamic> toJson() {
     return {
@@ -227,6 +231,7 @@ class Item {
       'price': price,
       'location': location,
       'status': status,
+      'img': img,
       'tags': tags.map((key, value) => MapEntry(key, value.toList())),
     };
   }
@@ -238,8 +243,12 @@ class Item {
       (json['price'] as num).toDouble(),
       json['location'] as String,
       json['status'] as String,
+      json['img'] as String,
       (json['tags'] as Map<String, dynamic>).map(
-        (key, value) => MapEntry(key, Set<String>.from((value as List).map((entry) => entry.toString()))),
+        (key, value) => MapEntry(
+          key,
+          Set<String>.from((value as List).map((entry) => entry.toString())),
+        ),
       ),
     );
   }
@@ -254,18 +263,16 @@ class Tag {
   Tag(this.id, this.name, this.options);
 
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'options': options.toList(),
-    };
+    return {'id': id, 'name': name, 'options': options.toList()};
   }
 
   factory Tag.fromJson(Map<String, dynamic> json) {
     return Tag(
       json['id'] as String,
       json['name'] as String,
-      Set<String>.from((json['options'] as List).map((entry) => entry.toString())),
+      Set<String>.from(
+        (json['options'] as List).map((entry) => entry.toString()),
+      ),
     );
   }
 
