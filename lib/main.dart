@@ -68,6 +68,14 @@ class _MainAppState extends State<MainApp> {
     setState(() {});
   }
 
+  void _refreshItems() {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_collections == null) {
@@ -80,7 +88,11 @@ class _MainAppState extends State<MainApp> {
       navigatorKey: _navigatorKey,
       home: Scaffold(
         body: Center(
-          child: Scroll(collections: _collections!, onAddPressed: _openNewItem),
+          child: Scroll(
+            collections: _collections!,
+            onAddPressed: _openNewItem,
+            onItemsChanged: _refreshItems,
+          ),
         ),
       ),
     );
@@ -154,11 +166,13 @@ class NavBar extends StatelessWidget {
 class Scroll extends StatelessWidget {
   final Collections collections;
   final VoidCallback onAddPressed;
+  final VoidCallback onItemsChanged;
 
   const Scroll({
     super.key,
     required this.collections,
     required this.onAddPressed,
+    required this.onItemsChanged,
   });
 
   @override
@@ -177,6 +191,8 @@ class Scroll extends StatelessWidget {
                 child: ItemRow(
                   i: collections.items.elementAt(index),
                   index: index,
+                  collections: collections,
+                  onChanged: onItemsChanged,
                 ),
               );
             },
@@ -195,6 +211,7 @@ class Scroll extends StatelessWidget {
         ),
         Padding(padding: EdgeInsets.all(8.0)),
         NavBar(onAddPressed: onAddPressed),
+        Padding(padding: EdgeInsets.all(8)),
       ],
     );
   }
