@@ -26,7 +26,7 @@ class _EditingItemState extends State<EditingItem> {
     super.initState();
     // Initialize controllers and fields from the passed-in item
     _nameController.text = widget.i.name;
-    _priceController.text = widget.i.price.toString();
+    _priceController.text = widget.i.price.toStringAsFixed(2);
     _location = widget.i.location;
     _status = widget.i.status;
     _imagePath = widget.i.img;
@@ -55,7 +55,7 @@ class _EditingItemState extends State<EditingItem> {
       return;
     }
 
-    final price = double.tryParse(priceText) ?? 0.0;
+    final price = double.tryParse(priceText) ?? 0.00;
     final selectedTags = <String, Set<String>>{};
     _selectedTagValues.forEach((tagName, values) {
       if (values.isNotEmpty) {

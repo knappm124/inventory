@@ -133,7 +133,7 @@ class ItemRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ItemHeader(name: i.name, index: index),
-              Text("Price: ${i.price.toString()}"),
+              Text("Price: ${i.price.toStringAsFixed(2)}"),
               Text("Location: ${i.location}"),
               Text("Status: ${i.status}"),
               for (String s in i.tags.keys)
@@ -211,7 +211,7 @@ class _EditableItemState extends State<EditableItem> {
                     height: 300,
                     fit: BoxFit.contain,
                   ),
-                  Text("Price: ${_item.price.toString()}"),
+                  Text("Price: ${_item.price.toStringAsFixed(2)}"),
                   Text("Location: ${_item.location}"),
                   Text("Status: ${_item.status}"),
                   for (String s in _item.tags.keys)

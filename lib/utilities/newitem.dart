@@ -152,7 +152,7 @@ class NewPrice extends StatelessWidget {
             signed: false,
           ),
           inputFormatters: <TextInputFormatter>[
-            FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+            FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
           ],
           decoration: const InputDecoration(
             labelText: 'Price',
