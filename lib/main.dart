@@ -87,11 +87,13 @@ class _MainAppState extends State<MainApp> {
     return MaterialApp(
       navigatorKey: _navigatorKey,
       home: Scaffold(
-        body: Center(
-          child: Scroll(
-            collections: _collections!,
-            onAddPressed: _openNewItem,
-            onItemsChanged: _refreshItems,
+        body: SafeArea(
+          child: Center(
+            child: Scroll(
+              collections: _collections!,
+              onAddPressed: _openNewItem,
+              onItemsChanged: _refreshItems,
+            ),
           ),
         ),
       ),

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:inventory/utilities/editing.dart';
 import 'collections.dart';
@@ -183,35 +185,45 @@ class _EditableItemState extends State<EditableItem> {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey, width: 1.0),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: DefaultTextStyle(
-          style: TextStyle(color: Colors.black, fontSize: 16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              EditableItemHeader(
-                i: _item,
-                collections: widget.collections,
-                onItemUpdated: _handleItemUpdated,
+    return Scaffold(
+      appBar: AppBar(title: Text(_item.name)),
+      body: SingleChildScrollView(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey, width: 1.0),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: DefaultTextStyle(
+              style: TextStyle(color: Colors.black, fontSize: 16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  EditableItemHeader(
+                    i: _item,
+                    collections: widget.collections,
+                    onItemUpdated: _handleItemUpdated,
+                  ),
+                  Text("Name: ${_item.name}"),
+                  Image.file(
+                    File(_item.img),
+                    width: 300,
+                    height: 300,
+                    fit: BoxFit.contain,
+                  ),
+                  Text("Price: ${_item.price.toString()}"),
+                  Text("Location: ${_item.location}"),
+                  Text("Status: ${_item.status}"),
+                  for (String s in _item.tags.keys)
+                    Row(
+                      children: [
+                        Text("$s: "),
+                        for (String o in _item.tags[s]!) Text("$o "),
+                      ],
+                    ),
+                ],
               ),
-              Text("Name: ${_item.name}"),
-              Image.asset(_item.img),
-              Text("Price: ${_item.price.toString()}"),
-              Text("Location: ${_item.location}"),
-              Text("Status: ${_item.status}"),
-              for (String s in _item.tags.keys)
-                Row(
-                  children: [
-                    Text("$s: "),
-                    for (String o in _item.tags[s]!) Text("$o "),
-                  ],
-                ),
-            ],
+            ),
           ),
         ),
       ),
@@ -236,10 +248,7 @@ class EditableItemHeader extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        IconButton(
-          onPressed: () => Navigator.pop(context),
-          icon: Icon(Icons.arrow_back),
-        ),
+        Spacer(),
         ItemIcons(i: i, collections: collections, onItemUpdated: onItemUpdated),
       ],
     );
