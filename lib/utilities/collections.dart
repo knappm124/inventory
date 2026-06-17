@@ -245,7 +245,7 @@ class Item {
       json['status'] as String,
       json['img'] as String,
       (json['tags'] as Map<String, dynamic>).map(
-        (key, value) => MapEntry(
+            (key, value) => MapEntry(
           key,
           Set<String>.from((value as List).map((entry) => entry.toString())),
         ),

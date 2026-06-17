@@ -80,32 +80,47 @@ class _NewItemState extends State<NewItem> {
     }).toList();
 
     return Scaffold(
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            NewItemHeader(onSave: _saveItem),
-            NewName(controller: _nameController),
-            ImageUploaderScreen(
-              initialImagePath: _imagePath,
-              onImageSelected: (imagePath) {
-                setState(() {
-                  _imagePath = imagePath;
-                });
-              },
+      body: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.arrow_back),
+              ),
+              IconButton(onPressed: _saveItem, icon: const Icon(Icons.save)),
+            ],
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  NewName(controller: _nameController),
+                  ImageUploaderScreen(
+                    initialImagePath: _imagePath,
+                    onImageSelected: (imagePath) {
+                      setState(() {
+                        _imagePath = imagePath;
+                      });
+                    },
+                  ),
+                  NewPrice(controller: _priceController),
+                  LocationChoice(
+                    value: _location,
+                    onChanged: (value) => setState(() => _location = value),
+                  ),
+                  StatusChoice(
+                    value: _status,
+                    onChanged: (value) => setState(() => _status = value),
+                  ),
+                  ...tagRows,
+                ],
+              ),
             ),
-            NewPrice(controller: _priceController),
-            LocationChoice(
-              value: _location,
-              onChanged: (value) => setState(() => _location = value),
-            ),
-            StatusChoice(
-              value: _status,
-              onChanged: (value) => setState(() => _status = value),
-            ),
-            ...tagRows,
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -218,26 +233,6 @@ class StatusChoice extends StatelessWidget {
           onChanged(newSelection.first);
         },
       ),
-    );
-  }
-}
-
-class NewItemHeader extends StatelessWidget {
-  final VoidCallback onSave;
-
-  const NewItemHeader({super.key, required this.onSave});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        IconButton(
-          onPressed: () => Navigator.of(context).pop(),
-          icon: const Icon(Icons.arrow_back),
-        ),
-        IconButton(onPressed: onSave, icon: const Icon(Icons.save)),
-      ],
     );
   }
 }

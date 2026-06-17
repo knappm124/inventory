@@ -213,7 +213,6 @@ class Scroll extends StatelessWidget {
         ),
         Padding(padding: EdgeInsets.all(8.0)),
         NavBar(onAddPressed: onAddPressed),
-        Padding(padding: EdgeInsets.all(8)),
       ],
     );
   }

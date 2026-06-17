@@ -98,32 +98,47 @@ class _EditingItemState extends State<EditingItem> {
     }).toList();
 
     return Scaffold(
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            NewItemHeader(onSave: _saveItem),
-            NewName(controller: _nameController),
-            ImageUploaderScreen(
-              initialImagePath: _imagePath,
-              onImageSelected: (imagePath) {
-                setState(() {
-                  _imagePath = imagePath;
-                });
-              },
+      body: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.arrow_back),
+              ),
+              IconButton(onPressed: _saveItem, icon: const Icon(Icons.save)),
+            ],
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  NewName(controller: _nameController),
+                  ImageUploaderScreen(
+                    initialImagePath: _imagePath,
+                    onImageSelected: (imagePath) {
+                      setState(() {
+                        _imagePath = imagePath;
+                      });
+                    },
+                  ),
+                  NewPrice(controller: _priceController),
+                  LocationChoice(
+                    value: _location,
+                    onChanged: (value) => setState(() => _location = value),
+                  ),
+                  StatusChoice(
+                    value: _status,
+                    onChanged: (value) => setState(() => _status = value),
+                  ),
+                  ...tagRows,
+                ],
+              ),
             ),
-            NewPrice(controller: _priceController),
-            LocationChoice(
-              value: _location,
-              onChanged: (value) => setState(() => _location = value),
-            ),
-            StatusChoice(
-              value: _status,
-              onChanged: (value) => setState(() => _status = value),
-            ),
-            ...tagRows,
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

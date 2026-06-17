@@ -188,11 +188,7 @@ class _EditableItemState extends State<EditableItem> {
     return Scaffold(
       appBar: AppBar(title: Text(_item.name)),
       body: SingleChildScrollView(
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey, width: 1.0),
-          ),
-          child: Padding(
+        child: Padding(
             padding: const EdgeInsets.all(8.0),
             child: DefaultTextStyle(
               style: TextStyle(color: Colors.black, fontSize: 16.0),
@@ -204,7 +200,6 @@ class _EditableItemState extends State<EditableItem> {
                     collections: widget.collections,
                     onItemUpdated: _handleItemUpdated,
                   ),
-                  Text("Name: ${_item.name}"),
                   Image.file(
                     File(_item.img),
                     width: 300,
@@ -226,8 +221,7 @@ class _EditableItemState extends State<EditableItem> {
             ),
           ),
         ),
-      ),
-    );
+      );
   }
 }
 
