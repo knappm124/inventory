@@ -82,6 +82,9 @@ class _NewItemState extends State<NewItem> {
     return Scaffold(
       body: Column(
         children: [
+          Padding(
+              padding: EdgeInsets.all(10)
+          ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -382,14 +385,14 @@ class _ImageUploaderScreenState extends State<ImageUploaderScreen> {
             ),
             child: _savedImage != null && _savedImage!.existsSync()
                 ? ClipRRect(
-                    borderRadius: BorderRadius.circular(11),
-                    child: Image.file(_savedImage!, fit: BoxFit.cover),
-                  )
+              borderRadius: BorderRadius.circular(11),
+              child: Image.file(_savedImage!, fit: BoxFit.cover),
+            )
                 : const Icon(
-                    Icons.image_not_supported,
-                    size: 80,
-                    color: Colors.grey,
-                  ),
+              Icons.image_not_supported,
+              size: 80,
+              color: Colors.grey,
+            ),
           ),
           const SizedBox(height: 16),
           ElevatedButton.icon(

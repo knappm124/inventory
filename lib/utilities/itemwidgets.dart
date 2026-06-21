@@ -189,39 +189,39 @@ class _EditableItemState extends State<EditableItem> {
       appBar: AppBar(title: Text(_item.name)),
       body: SingleChildScrollView(
         child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: DefaultTextStyle(
-              style: TextStyle(color: Colors.black, fontSize: 16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  EditableItemHeader(
-                    i: _item,
-                    collections: widget.collections,
-                    onItemUpdated: _handleItemUpdated,
+          padding: const EdgeInsets.all(8.0),
+          child: DefaultTextStyle(
+            style: TextStyle(color: Colors.black, fontSize: 16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                EditableItemHeader(
+                  i: _item,
+                  collections: widget.collections,
+                  onItemUpdated: _handleItemUpdated,
+                ),
+                Image.file(
+                  File(_item.img),
+                  width: 300,
+                  height: 300,
+                  fit: BoxFit.contain,
+                ),
+                Text("Price: ${_item.price.toStringAsFixed(2)}"),
+                Text("Location: ${_item.location}"),
+                Text("Status: ${_item.status}"),
+                for (String s in _item.tags.keys)
+                  Row(
+                    children: [
+                      Text("$s: "),
+                      for (String o in _item.tags[s]!) Text("$o "),
+                    ],
                   ),
-                  Image.file(
-                    File(_item.img),
-                    width: 300,
-                    height: 300,
-                    fit: BoxFit.contain,
-                  ),
-                  Text("Price: ${_item.price.toStringAsFixed(2)}"),
-                  Text("Location: ${_item.location}"),
-                  Text("Status: ${_item.status}"),
-                  for (String s in _item.tags.keys)
-                    Row(
-                      children: [
-                        Text("$s: "),
-                        for (String o in _item.tags[s]!) Text("$o "),
-                      ],
-                    ),
-                ],
-              ),
+              ],
             ),
           ),
         ),
-      );
+      ),
+    );
   }
 }
 

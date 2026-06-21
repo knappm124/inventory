@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'utilities/newitem.dart';
 import 'utilities/collections.dart';
 import 'utilities/itemwidgets.dart';
+import 'utilities/filter.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,7 +23,10 @@ class MainApp extends StatefulWidget {
 
 class _MainAppState extends State<MainApp> {
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   Collections? _collections;
+  Set<Item>? _filteredItems;
+  FilterCriteria? _filterCriteria;
 
   @override
   void initState() {
@@ -47,6 +51,7 @@ class _MainAppState extends State<MainApp> {
 
     setState(() {
       _collections = loadedCollections;
+      _applyCurrentFilters();
     });
   }
 
@@ -65,7 +70,9 @@ class _MainAppState extends State<MainApp> {
       return;
     }
 
-    setState(() {});
+    setState(() {
+      _applyCurrentFilters();
+    });
   }
 
   void _refreshItems() {
@@ -73,7 +80,41 @@ class _MainAppState extends State<MainApp> {
       return;
     }
 
-    setState(() {});
+    setState(() {
+      _applyCurrentFilters();
+    });
+  }
+
+  void _onFilterChanged(Set<Item> filteredItems) {
+    setState(() {
+      _filteredItems = filteredItems;
+    });
+  }
+
+  void _onCriteriaChanged(FilterCriteria criteria) {
+    setState(() {
+      _filterCriteria = criteria;
+      _applyCurrentFilters();
+    });
+  }
+
+  void _applyCurrentFilters() {
+    final activeCriteria = _filterCriteria ?? const FilterCriteria();
+
+    if (_collections == null) {
+      _filteredItems = null;
+      return;
+    }
+
+    if (!activeCriteria.hasActiveFilters) {
+      _filteredItems = null;
+      return;
+    }
+
+    _filteredItems = activeCriteria.apply(
+      _collections!.items,
+      _collections!.maxPrice,
+    );
   }
 
   @override
@@ -87,14 +128,23 @@ class _MainAppState extends State<MainApp> {
     return MaterialApp(
       navigatorKey: _navigatorKey,
       home: Scaffold(
+        key: _scaffoldKey,
         body: SafeArea(
           child: Center(
             child: Scroll(
               collections: _collections!,
+              filteredItems: _filteredItems,
               onAddPressed: _openNewItem,
               onItemsChanged: _refreshItems,
+              scaffoldKey: _scaffoldKey,
             ),
           ),
+        ),
+        drawer: Filter(
+          c: _collections!,
+          criteria: _filterCriteria ?? const FilterCriteria(),
+          onCriteriaChanged: _onCriteriaChanged,
+          onFilterChanged: _onFilterChanged,
         ),
       ),
     );
@@ -127,7 +177,7 @@ Set<Tag> _defaultTags() {
       "Rhea",
       "Ostrich",
     }),
-    Tag("3", "Occassion", {
+    Tag("3", "Occasion", {
       "Baby",
       "Christmas",
       "Easter",
@@ -149,15 +199,25 @@ Set<Tag> _defaultTags() {
 
 class NavBar extends StatelessWidget {
   final VoidCallback onAddPressed;
+  final GlobalKey<ScaffoldState> _scaffoldKey;
 
-  const NavBar({super.key, required this.onAddPressed});
+  const NavBar({
+    super.key,
+    required this.onAddPressed,
+    required this._scaffoldKey,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        IconButton(onPressed: null, icon: Icon(Icons.filter_alt_outlined)),
+        IconButton(
+          onPressed: () {
+            _scaffoldKey.currentState?.openDrawer();
+          },
+          icon: Icon(Icons.filter_alt_outlined),
+        ),
         IconButton(onPressed: onAddPressed, icon: Icon(Icons.add)),
         IconButton(onPressed: null, icon: Icon(Icons.menu)),
       ],
@@ -167,18 +227,23 @@ class NavBar extends StatelessWidget {
 
 class Scroll extends StatelessWidget {
   final Collections collections;
+  final Set<Item>? filteredItems;
   final VoidCallback onAddPressed;
   final VoidCallback onItemsChanged;
+  final GlobalKey<ScaffoldState> _scaffoldKey;
 
   const Scroll({
     super.key,
     required this.collections,
+    required this.filteredItems,
     required this.onAddPressed,
     required this.onItemsChanged,
+    required this._scaffoldKey,
   });
 
   @override
   Widget build(BuildContext context) {
+    final itemsToDisplay = filteredItems ?? collections.items;
     return Column(
       children: [
         Text("My Inventory"),
@@ -186,12 +251,12 @@ class Scroll extends StatelessWidget {
         Expanded(
           child: ReorderableListView.builder(
             buildDefaultDragHandles: false,
-            itemCount: collections.items.length,
+            itemCount: itemsToDisplay.length,
             itemBuilder: (context, index) {
               return Container(
-                key: ValueKey(collections.items.elementAt(index)),
+                key: ValueKey(itemsToDisplay.elementAt(index)),
                 child: ItemRow(
-                  i: collections.items.elementAt(index),
+                  i: itemsToDisplay.elementAt(index),
                   index: index,
                   collections: collections,
                   onChanged: onItemsChanged,
@@ -202,9 +267,9 @@ class Scroll extends StatelessWidget {
               if (newIndex > oldIndex) {
                 newIndex -= 1;
               }
-              final item = collections.items.elementAt(oldIndex);
+              final item = itemsToDisplay.elementAt(oldIndex);
               List<Item> tempList = collections.items.toList();
-              tempList.removeAt(oldIndex);
+              tempList.removeAt(collections.items.toList().indexOf(item));
               tempList.insert(newIndex, item);
               collections.items = tempList.toSet();
               collections.persistChanges();
@@ -212,7 +277,7 @@ class Scroll extends StatelessWidget {
           ),
         ),
         Padding(padding: EdgeInsets.all(8.0)),
-        NavBar(onAddPressed: onAddPressed),
+        NavBar(onAddPressed: onAddPressed, scaffoldKey: _scaffoldKey),
       ],
     );
   }

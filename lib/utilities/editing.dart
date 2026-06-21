@@ -100,6 +100,9 @@ class _EditingItemState extends State<EditingItem> {
     return Scaffold(
       body: Column(
         children: [
+          Padding(
+            padding: EdgeInsets.all(10)
+          ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

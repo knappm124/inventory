@@ -133,8 +133,20 @@ class Collections {
   Set<Tag> tags;
   Set<String> locations = {"Home", "Etsy", "General Store"};
   Set<String> status = {"WIP", "Listed", "Sold", "Returned"};
+  double maxPrice = 0;
 
-  Collections(this.items, this.tags, this.locations, this.status);
+  Collections(this.items, this.tags, this.locations, this.status) {
+    _recalculateMaxPrice();
+  }
+
+  void _recalculateMaxPrice() {
+    maxPrice = 0;
+    for (final item in items) {
+      if (item.price > maxPrice) {
+        maxPrice = item.price;
+      }
+    }
+  }
 
   Future<void> saveToDisk() async {
     final fileMethods = FileMethods();
@@ -149,6 +161,7 @@ class Collections {
   void _upsertItem(Item i) {
     items.removeWhere((existingItem) => existingItem.id == i.id);
     items.add(i);
+    _recalculateMaxPrice();
     persistChanges();
   }
 
@@ -177,6 +190,7 @@ class Collections {
 
   Collections removeItem(Item i) {
     items.remove(i);
+    _recalculateMaxPrice();
     persistChanges();
     return this;
   }
@@ -210,6 +224,46 @@ class Collections {
     _upsertItem(i);
     return this;
   }
+
+  static Set<Item> getAllByStatus(Set<Item> items, String status) {
+    Set<Item> filteredItems = {};
+    for (Item i in items) {
+      if (i.hasStatus(status)) {
+        filteredItems.add(i);
+      }
+    }
+    return filteredItems;
+  }
+
+  static Set<Item> getAllByLocation(Set<Item> items, String location) {
+    Set<Item> filteredItems = {};
+    for (Item i in items) {
+      if (i.hasLocation(location)) {
+        filteredItems.add(i);
+      }
+    }
+    return filteredItems;
+  }
+
+  static Set<Item> getAllByTag(Set<Item> items, String name, String option) {
+    Set<Item> filteredItems = {};
+    for (Item i in items) {
+      if (i.containsTag(name, option)) {
+        filteredItems.add(i);
+      }
+    }
+    return filteredItems;
+  }
+
+  static Set<Item> getAllBetween(Set<Item> items, double min, double max) {
+    Set<Item> filteredItems = {};
+    for (Item i in items) {
+      if (i.priceBetween(min, max)) {
+        filteredItems.add(i);
+      }
+    }
+    return filteredItems;
+  }
 }
 
 @JsonSerializable()
@@ -222,7 +276,15 @@ class Item {
   String img;
   Map<String, Set<String>> tags;
 
-  Item(this.id, this.name, this.price, this.location, this.status, this.img, this.tags);
+  Item(
+    this.id,
+    this.name,
+    this.price,
+    this.location,
+    this.status,
+    this.img,
+    this.tags,
+  );
 
   Map<String, dynamic> toJson() {
     return {
@@ -245,12 +307,34 @@ class Item {
       json['status'] as String,
       json['img'] as String,
       (json['tags'] as Map<String, dynamic>).map(
-            (key, value) => MapEntry(
+        (key, value) => MapEntry(
           key,
           Set<String>.from((value as List).map((entry) => entry.toString())),
         ),
       ),
     );
+  }
+
+  bool priceBetween(double min, double max) {
+    return price >= min && price <= max;
+  }
+
+  bool containsTag(String name, String option) {
+    bool exists = false;
+    tags.forEach((key, values) {
+      if (key == name) {
+        exists = true;
+      }
+    });
+    return exists;
+  }
+
+  bool hasStatus(String status) {
+    return (status == this.status);
+  }
+
+  bool hasLocation(String location) {
+    return (this.location == location);
   }
 }
 
