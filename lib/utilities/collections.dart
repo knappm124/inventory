@@ -28,7 +28,7 @@ class FileMethods {
     return File('$path/tags.json');
   }
 
-  Future<File> writeItems(Set<Item> itemsToSave) async {
+  Future<File> writeItems(List<Item> itemsToSave) async {
     if (kIsWeb) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('items_json', itemsToJsonString(itemsToSave));
@@ -50,24 +50,24 @@ class FileMethods {
     return file.writeAsString(tagsToJsonString(tagsToSave));
   }
 
-  Future<Set<Item>> readItems() async {
+  Future<List<Item>> readItems() async {
     if (kIsWeb) {
       final prefs = await SharedPreferences.getInstance();
       final content = prefs.getString('items_json') ?? '';
       if (content.trim().isEmpty) {
-        return <Item>{};
+        return <Item>[];
       }
       return itemsFromJsonString(content);
     }
 
     final file = await _localItemFile;
     if (!await file.exists()) {
-      return <Item>{};
+      return <Item>[];
     }
 
     final content = await file.readAsString();
     if (content.trim().isEmpty) {
-      return <Item>{};
+      return <Item>[];
     }
 
     return itemsFromJsonString(content);
@@ -96,19 +96,34 @@ class FileMethods {
     return tagsFromJsonString(content);
   }
 
-  static String itemsToJsonString(Set<Item> itemsToEncode) {
+  static String itemsToJsonString(List<Item> itemsToEncode) {
     return jsonEncode(itemsToEncode.map((item) => item.toJson()).toList());
   }
 
-  static Set<Item> itemsFromJsonString(String jsonString) {
+  static List<Item> itemsFromJsonString(String jsonString) {
     final decoded = jsonDecode(jsonString);
     if (decoded is! List) {
-      return <Item>{};
+      return <Item>[];
     }
 
-    return decoded
+    final items = decoded
         .map((entry) => Item.fromJson(Map<String, dynamic>.from(entry as Map)))
-        .toSet();
+        .toList();
+
+    return _dedupeItemsById(items);
+  }
+
+  static List<Item> _dedupeItemsById(List<Item> items) {
+    final seenIds = <String>{};
+    final result = <Item>[];
+
+    for (final item in items) {
+      if (seenIds.add(item.id)) {
+        result.add(item);
+      }
+    }
+
+    return result;
   }
 
   static String tagsToJsonString(Set<Tag> tagsToEncode) {
@@ -129,7 +144,7 @@ class FileMethods {
 
 @JsonSerializable()
 class Collections {
-  Set<Item> items;
+  List<Item> items;
   Set<Tag> tags;
   Set<String> locations = {"Home", "Etsy", "General Store"};
   Set<String> status = {"WIP", "Listed", "Sold", "Returned"};
@@ -159,8 +174,12 @@ class Collections {
   }
 
   void _upsertItem(Item i) {
-    items.removeWhere((existingItem) => existingItem.id == i.id);
-    items.add(i);
+    final index = items.indexWhere((existingItem) => existingItem.id == i.id);
+    if (index >= 0) {
+      items[index] = i;
+    } else {
+      items.add(i);
+    }
     _recalculateMaxPrice();
     persistChanges();
   }
@@ -189,7 +208,7 @@ class Collections {
   }
 
   Collections removeItem(Item i) {
-    items.remove(i);
+    items.removeWhere((existingItem) => existingItem.id == i.id);
     _recalculateMaxPrice();
     persistChanges();
     return this;
@@ -225,8 +244,8 @@ class Collections {
     return this;
   }
 
-  static Set<Item> getAllByStatus(Set<Item> items, String status) {
-    Set<Item> filteredItems = {};
+  static List<Item> getAllByStatus(List<Item> items, String status) {
+    List<Item> filteredItems = [];
     for (Item i in items) {
       if (i.hasStatus(status)) {
         filteredItems.add(i);
@@ -235,8 +254,8 @@ class Collections {
     return filteredItems;
   }
 
-  static Set<Item> getAllByLocation(Set<Item> items, String location) {
-    Set<Item> filteredItems = {};
+  static List<Item> getAllByLocation(List<Item> items, String location) {
+    List<Item> filteredItems = [];
     for (Item i in items) {
       if (i.hasLocation(location)) {
         filteredItems.add(i);
@@ -245,8 +264,8 @@ class Collections {
     return filteredItems;
   }
 
-  static Set<Item> getAllByTag(Set<Item> items, String name, String option) {
-    Set<Item> filteredItems = {};
+  static List<Item> getAllByTag(List<Item> items, String name, String option) {
+    List<Item> filteredItems = [];
     for (Item i in items) {
       if (i.containsTag(name, option)) {
         filteredItems.add(i);
@@ -255,8 +274,8 @@ class Collections {
     return filteredItems;
   }
 
-  static Set<Item> getAllBetween(Set<Item> items, double min, double max) {
-    Set<Item> filteredItems = {};
+  static List<Item> getAllBetween(List<Item> items, double min, double max) {
+    List<Item> filteredItems = [];
     for (Item i in items) {
       if (i.priceBetween(min, max)) {
         filteredItems.add(i);
@@ -320,13 +339,11 @@ class Item {
   }
 
   bool containsTag(String name, String option) {
-    bool exists = false;
-    tags.forEach((key, values) {
-      if (key == name) {
-        exists = true;
-      }
-    });
-    return exists;
+    final values = tags[name];
+    if (values == null) {
+      return false;
+    }
+    return values.contains(option);
   }
 
   bool hasStatus(String status) {

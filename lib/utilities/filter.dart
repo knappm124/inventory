@@ -5,14 +5,35 @@ class FilterCriteria {
   final String? status;
   final String? location;
   final RangeValues? priceRange;
+  final Set<String> color;
+  final Set<String> size;
+  final Set<String> occasion;
+  final Set<String> symbols;
+  final Set<String> division;
 
-  const FilterCriteria({this.status, this.location, this.priceRange});
+  const FilterCriteria({
+    this.status,
+    this.location,
+    this.priceRange,
+    this.color = const {},
+    this.size = const {},
+    this.occasion = const {},
+    this.symbols = const {},
+    this.division = const {},
+  });
 
   bool get hasActiveFilters {
-    return status != null || location != null || priceRange != null;
+    return status != null ||
+        location != null ||
+        priceRange != null ||
+        color.isNotEmpty ||
+        size.isNotEmpty ||
+        occasion.isNotEmpty ||
+        symbols.isNotEmpty ||
+        division.isNotEmpty;
   }
 
-  Set<Item> apply(Set<Item> items, double maxPrice) {
+  List<Item> apply(List<Item> items, double maxPrice) {
     final effectiveMaxPrice = maxPrice < 10 ? 10.0 : maxPrice;
     final range = priceRange ?? RangeValues(0, effectiveMaxPrice);
 
@@ -26,16 +47,42 @@ class FilterCriteria {
       if (location != null) {
         matchLocation = item.hasLocation(location!);
       }
-
       final matchPrice = item.priceBetween(range.start, range.end);
-      return matchStatus && matchLocation && matchPrice;
-    }).toSet();
+      bool matchColor = true;
+      if (color.isNotEmpty) {
+        matchColor = color.any((c) => item.containsTag('Color', c));
+      }
+      bool matchSize = true;
+      if (size.isNotEmpty) {
+        matchSize = size.any((s) => item.containsTag('Size', s));
+      }
+      bool matchOccasion = true;
+      if (occasion.isNotEmpty) {
+        matchOccasion = occasion.any((o) => item.containsTag('Occasion', o));
+      }
+      bool matchSymbols = true;
+      if (symbols.isNotEmpty) {
+        matchSymbols = symbols.any((s) => item.containsTag('Symbols', s));
+      }
+      bool matchDivision = true;
+      if (division.isNotEmpty) {
+        matchDivision = division.any((d) => item.containsTag('Division', d));
+      }
+      return matchStatus &&
+          matchLocation &&
+          matchPrice &&
+          matchColor &&
+          matchSize &&
+          matchOccasion &&
+          matchSymbols &&
+          matchDivision;
+    }).toList();
   }
 }
 
 class Filter extends StatefulWidget {
   final Collections c;
-  final ValueChanged<Set<Item>> onFilterChanged;
+  final ValueChanged<List<Item>> onFilterChanged;
   final ValueChanged<FilterCriteria> onCriteriaChanged;
   final FilterCriteria criteria;
 
@@ -53,9 +100,14 @@ class Filter extends StatefulWidget {
 
 class _FilterState extends State<Filter> {
   late Collections c;
-  late Set<Item> filtered;
+  late List<Item> filtered;
   String? status;
   String? location;
+  Set<String> color = {};
+  Set<String> size = {};
+  Set<String> occasion = {};
+  Set<String> symbols = {};
+  Set<String> division = {};
   late double maxPrice;
   late RangeValues _currentRangeValues;
 
@@ -65,6 +117,11 @@ class _FilterState extends State<Filter> {
     c = widget.c;
     status = widget.criteria.status;
     location = widget.criteria.location;
+    color = Set<String>.from(widget.criteria.color);
+    size = Set<String>.from(widget.criteria.size);
+    occasion = Set<String>.from(widget.criteria.occasion);
+    symbols = Set<String>.from(widget.criteria.symbols);
+    division = Set<String>.from(widget.criteria.division);
     maxPrice = c.maxPrice;
     if (maxPrice < 10) {
       maxPrice = 10;
@@ -102,6 +159,11 @@ class _FilterState extends State<Filter> {
     if (oldWidget.criteria != widget.criteria) {
       status = widget.criteria.status;
       location = widget.criteria.location;
+      color = Set<String>.from(widget.criteria.color);
+      size = Set<String>.from(widget.criteria.size);
+      occasion = Set<String>.from(widget.criteria.occasion);
+      symbols = Set<String>.from(widget.criteria.symbols);
+      division = Set<String>.from(widget.criteria.division);
       _currentRangeValues =
           widget.criteria.priceRange ?? RangeValues(0, maxPrice);
     }
@@ -118,6 +180,44 @@ class _FilterState extends State<Filter> {
       status: status,
       location: location,
       priceRange: isFullPriceRange ? null : _currentRangeValues,
+      color: color,
+      size: size,
+      occasion: occasion,
+      symbols: symbols,
+      division: division,
+    );
+  }
+
+  Widget _buildChipSection({
+    required String title,
+    required List<String> options,
+    required Set<String> selected,
+    required ValueChanged<Set<String>> onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: options.map((option) {
+            return FilterChip(
+              label: Text(option),
+              selected: selected.contains(option),
+              onSelected: (isSelected) {
+                final updated = Set<String>.from(selected);
+                if (isSelected) {
+                  updated.add(option);
+                } else {
+                  updated.remove(option);
+                }
+                onChanged(updated);
+              },
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 
@@ -135,16 +235,17 @@ class _FilterState extends State<Filter> {
     return Drawer(
       width: 400,
       child: ListView(
-        padding: EdgeInsets.zero,
+        padding: EdgeInsets.all(16),
         children: [
           Row(
             children: [
+              Padding(padding: EdgeInsets.only(top: 10)),
               Text("Filter"),
               IconButton(
                 onPressed: () {
                   Navigator.pop(context);
                 },
-                icon: Icon(Icons.expand_more),
+                icon: Icon(Icons.chevron_left),
               ),
             ],
           ),
@@ -203,6 +304,92 @@ class _FilterState extends State<Filter> {
                 _currentRangeValues = values;
                 _filterList();
               });
+            },
+          ),
+          _buildChipSection(
+            title: "Color",
+            options: const [
+              'Red',
+              'Orange',
+              'Yellow',
+              'Green',
+              'Blue',
+              'Purple',
+              'Pink',
+              'Brown',
+              'Black',
+            ],
+            selected: color,
+            onChanged: (newValue) {
+              setState(() {
+                color = newValue;
+              });
+              _filterList();
+            },
+          ),
+          _buildChipSection(
+            title: "Size",
+            options: const [
+              'Quail',
+              'Pullet',
+              'Chicken',
+              'Duck',
+              'Goose',
+              'Rhea',
+              'Ostrich',
+            ],
+            selected: size,
+            onChanged: (newValue) {
+              setState(() {
+                size = newValue;
+              });
+              _filterList();
+            },
+          ),
+          _buildChipSection(
+            title: "Occasion",
+            options: const [
+              'Baby',
+              'Christmas',
+              'Easter',
+              'Fall',
+              'Spring',
+              'Wedding',
+            ],
+            selected: occasion,
+            onChanged: (newValue) {
+              setState(() {
+                occasion = newValue;
+              });
+              _filterList();
+            },
+          ),
+          _buildChipSection(
+            title: "Symbols",
+            options: const ['Animal', 'Person', 'Plants', 'Religious', 'Star'],
+            selected: symbols,
+            onChanged: (newValue) {
+              setState(() {
+                symbols = newValue;
+              });
+              _filterList();
+            },
+          ),
+          _buildChipSection(
+            title: "Division",
+            options: const [
+              'Band',
+              'Circles',
+              'Diagonal Band',
+              'Four Panels',
+              'Star',
+            ],
+            selected: division,
+            onChanged: (newValue) {
+              setState(() {
+                division = newValue;
+              });
+              _filterList();
             },
           ),
         ],

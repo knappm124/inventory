@@ -73,24 +73,6 @@ class ItemIcons extends StatelessWidget {
   }
 }
 
-class ItemHeader extends StatelessWidget {
-  final String name;
-  final int index;
-
-  const ItemHeader({super.key, required this.name, required this.index});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(name),
-        ReorderableDragStartListener(index: index, child: Icon(Icons.reorder)),
-      ],
-    );
-  }
-}
-
 class ItemRow extends StatelessWidget {
   final Item i;
   final int index;
@@ -129,20 +111,28 @@ class ItemRow extends StatelessWidget {
         },
         child: Padding(
           padding: const EdgeInsets.all(8.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              ItemHeader(name: i.name, index: index),
-              Text("Price: ${i.price.toStringAsFixed(2)}"),
-              Text("Location: ${i.location}"),
-              Text("Status: ${i.status}"),
-              for (String s in i.tags.keys)
-                Row(
-                  children: [
-                    Text("$s: "),
-                    for (String o in i.tags[s]!) Text("$o "),
-                  ],
-                ),
+              Image.file(
+                File(i.img),
+                width: 100,
+                height: 100,
+                fit: BoxFit.contain,
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Name: ${i.name}"),
+                  Text("Price: ${i.price.toStringAsFixed(2)}"),
+                  Text("Location: ${i.location}"),
+                  Text("Status: ${i.status}"),
+                ],
+              ),
+              ReorderableDragStartListener(
+                index: index,
+                child: Icon(Icons.reorder),
+              ),
             ],
           ),
         ),

@@ -17,6 +17,7 @@ class NewItem extends StatefulWidget {
 }
 
 class _NewItemState extends State<NewItem> {
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
   String _location = 'Home';
@@ -36,11 +37,16 @@ class _NewItemState extends State<NewItem> {
       return;
     }
 
-    final name = _nameController.text.trim();
-    final priceText = _priceController.text.trim();
-    if (name.isEmpty || priceText.isEmpty) {
+    final isValid = _formKey.currentState?.validate() ?? false;
+    if (!isValid) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fix the highlighted fields.')),
+      );
       return;
     }
+
+    final name = _nameController.text.trim();
+    final priceText = _priceController.text.trim();
 
     final price = double.tryParse(priceText) ?? 0.0;
     final selectedTags = <String, Set<String>>{};
@@ -82,9 +88,7 @@ class _NewItemState extends State<NewItem> {
     return Scaffold(
       body: Column(
         children: [
-          Padding(
-              padding: EdgeInsets.all(10)
-          ),
+          Padding(padding: EdgeInsets.all(10)),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -97,29 +101,57 @@ class _NewItemState extends State<NewItem> {
           ),
           Expanded(
             child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  NewName(controller: _nameController),
-                  ImageUploaderScreen(
-                    initialImagePath: _imagePath,
-                    onImageSelected: (imagePath) {
-                      setState(() {
-                        _imagePath = imagePath;
-                      });
-                    },
-                  ),
-                  NewPrice(controller: _priceController),
-                  LocationChoice(
-                    value: _location,
-                    onChanged: (value) => setState(() => _location = value),
-                  ),
-                  StatusChoice(
-                    value: _status,
-                    onChanged: (value) => setState(() => _status = value),
-                  ),
-                  ...tagRows,
-                ],
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    NewName(
+                      controller: _nameController,
+                      validator: (value) {
+                        final trimmed = value?.trim() ?? '';
+                        if (trimmed.isEmpty) {
+                          return 'Name is required.';
+                        }
+                        return null;
+                      },
+                    ),
+                    ImageUploaderScreen(
+                      initialImagePath: _imagePath,
+                      onImageSelected: (imagePath) {
+                        setState(() {
+                          _imagePath = imagePath;
+                        });
+                      },
+                    ),
+                    NewPrice(
+                      controller: _priceController,
+                      validator: (value) {
+                        final trimmed = value?.trim() ?? '';
+                        if (trimmed.isEmpty) {
+                          return 'Price is required.';
+                        }
+                        final parsed = double.tryParse(trimmed);
+                        if (parsed == null) {
+                          return 'Enter a valid number.';
+                        }
+                        if (parsed < 0) {
+                          return 'Price cannot be negative.';
+                        }
+                        return null;
+                      },
+                    ),
+                    LocationChoice(
+                      value: _location,
+                      onChanged: (value) => setState(() => _location = value),
+                    ),
+                    StatusChoice(
+                      value: _status,
+                      onChanged: (value) => setState(() => _status = value),
+                    ),
+                    ...tagRows,
+                  ],
+                ),
               ),
             ),
           ),
@@ -131,8 +163,9 @@ class _NewItemState extends State<NewItem> {
 
 class NewName extends StatelessWidget {
   final TextEditingController controller;
+  final String? Function(String?)? validator;
 
-  const NewName({super.key, required this.controller});
+  const NewName({super.key, required this.controller, this.validator});
 
   @override
   Widget build(BuildContext context) {
@@ -140,8 +173,10 @@ class NewName extends StatelessWidget {
       width: 300,
       padding: const EdgeInsets.all(10),
       child: Material(
-        child: TextField(
+        child: TextFormField(
           controller: controller,
+          validator: validator,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           decoration: InputDecoration(
             labelText: 'Name',
             border: OutlineInputBorder(),
@@ -154,8 +189,9 @@ class NewName extends StatelessWidget {
 
 class NewPrice extends StatelessWidget {
   final TextEditingController controller;
+  final String? Function(String?)? validator;
 
-  const NewPrice({super.key, required this.controller});
+  const NewPrice({super.key, required this.controller, this.validator});
 
   @override
   Widget build(BuildContext context) {
@@ -163,8 +199,10 @@ class NewPrice extends StatelessWidget {
       width: 300,
       padding: const EdgeInsets.all(10),
       child: Material(
-        child: TextField(
+        child: TextFormField(
           controller: controller,
+          validator: validator,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           keyboardType: const TextInputType.numberWithOptions(
             decimal: true,
             signed: false,
@@ -385,14 +423,14 @@ class _ImageUploaderScreenState extends State<ImageUploaderScreen> {
             ),
             child: _savedImage != null && _savedImage!.existsSync()
                 ? ClipRRect(
-              borderRadius: BorderRadius.circular(11),
-              child: Image.file(_savedImage!, fit: BoxFit.cover),
-            )
+                    borderRadius: BorderRadius.circular(11),
+                    child: Image.file(_savedImage!, fit: BoxFit.cover),
+                  )
                 : const Icon(
-              Icons.image_not_supported,
-              size: 80,
-              color: Colors.grey,
-            ),
+                    Icons.image_not_supported,
+                    size: 80,
+                    color: Colors.grey,
+                  ),
           ),
           const SizedBox(height: 16),
           ElevatedButton.icon(

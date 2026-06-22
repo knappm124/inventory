@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'utilities/newitem.dart';
 import 'utilities/collections.dart';
 import 'utilities/itemwidgets.dart';
@@ -25,7 +28,7 @@ class _MainAppState extends State<MainApp> {
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   Collections? _collections;
-  Set<Item>? _filteredItems;
+  List<Item>? _filteredItems;
   FilterCriteria? _filterCriteria;
 
   @override
@@ -85,7 +88,7 @@ class _MainAppState extends State<MainApp> {
     });
   }
 
-  void _onFilterChanged(Set<Item> filteredItems) {
+  void _onFilterChanged(List<Item> filteredItems) {
     setState(() {
       _filteredItems = filteredItems;
     });
@@ -151,8 +154,8 @@ class _MainAppState extends State<MainApp> {
   }
 }
 
-Set<Item> _defaultItems() {
-  return {};
+List<Item> _defaultItems() {
+  return [];
 }
 
 Set<Tag> _defaultTags() {
@@ -225,12 +228,12 @@ class NavBar extends StatelessWidget {
   }
 }
 
-class Scroll extends StatelessWidget {
+class Scroll extends StatefulWidget {
   final Collections collections;
-  final Set<Item>? filteredItems;
+  final List<Item>? filteredItems;
   final VoidCallback onAddPressed;
   final VoidCallback onItemsChanged;
-  final GlobalKey<ScaffoldState> _scaffoldKey;
+  final GlobalKey<ScaffoldState> scaffoldKey;
 
   const Scroll({
     super.key,
@@ -238,46 +241,311 @@ class Scroll extends StatelessWidget {
     required this.filteredItems,
     required this.onAddPressed,
     required this.onItemsChanged,
-    required this._scaffoldKey,
+    required this.scaffoldKey,
   });
 
   @override
+  State<Scroll> createState() => _ScrollState();
+}
+
+enum SortOption { manual, nameAsc, priceLowToHigh, priceHighToLow, statusAsc }
+
+class _ScrollState extends State<Scroll> {
+  static const String _searchPrefKey = 'inventory.searchQuery';
+  static const String _sortPrefKey = 'inventory.sortOption';
+
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  SortOption _sortOption = SortOption.manual;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_restoreListPreferences());
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _restoreListPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedSearch = prefs.getString(_searchPrefKey) ?? '';
+    final savedSortIndex = prefs.getInt(_sortPrefKey);
+
+    SortOption restoredSort = SortOption.manual;
+    if (savedSortIndex != null &&
+        savedSortIndex >= 0 &&
+        savedSortIndex < SortOption.values.length) {
+      restoredSort = SortOption.values[savedSortIndex];
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _searchQuery = savedSearch;
+      _searchController.text = savedSearch;
+      _sortOption = restoredSort;
+    });
+  }
+
+  Future<void> _persistListPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_searchPrefKey, _searchQuery);
+    await prefs.setInt(_sortPrefKey, _sortOption.index);
+  }
+
+  bool get _canReorder {
+    return widget.filteredItems == null &&
+        _searchQuery.trim().isEmpty &&
+        _sortOption == SortOption.manual;
+  }
+
+  List<Item> _buildVisibleItems() {
+    final baseItems = List<Item>.from(
+      widget.filteredItems ?? widget.collections.items,
+    );
+    final query = _searchQuery.trim().toLowerCase();
+
+    final filteredBySearch = query.isEmpty
+        ? baseItems
+        : baseItems.where((item) {
+            return item.name.toLowerCase().contains(query) ||
+                item.location.toLowerCase().contains(query) ||
+                item.status.toLowerCase().contains(query);
+          }).toList();
+
+    switch (_sortOption) {
+      case SortOption.manual:
+        return filteredBySearch;
+      case SortOption.nameAsc:
+        filteredBySearch.sort((a, b) => a.name.compareTo(b.name));
+        return filteredBySearch;
+      case SortOption.priceLowToHigh:
+        filteredBySearch.sort((a, b) => a.price.compareTo(b.price));
+        return filteredBySearch;
+      case SortOption.priceHighToLow:
+        filteredBySearch.sort((a, b) => b.price.compareTo(a.price));
+        return filteredBySearch;
+      case SortOption.statusAsc:
+        filteredBySearch.sort((a, b) => a.status.compareTo(b.status));
+        return filteredBySearch;
+    }
+  }
+
+  String _sortLabel(SortOption option) {
+    switch (option) {
+      case SortOption.manual:
+        return 'Manual';
+      case SortOption.nameAsc:
+        return 'Name (A-Z)';
+      case SortOption.priceLowToHigh:
+        return 'Price (Low-High)';
+      case SortOption.priceHighToLow:
+        return 'Price (High-Low)';
+      case SortOption.statusAsc:
+        return 'Status (A-Z)';
+    }
+  }
+
+  Widget _buildSortChip(SortOption option) {
+    final selected = _sortOption == option;
+    return ChoiceChip(
+      label: Text(_sortLabel(option)),
+      selected: selected,
+      onSelected: (_) {
+        setState(() {
+          _sortOption = option;
+        });
+        unawaited(_persistListPreferences());
+      },
+    );
+  }
+
+  void _reorderItems(int oldIndex, int newIndex, List<Item> itemsToDisplay) {
+    if (!_canReorder) {
+      return;
+    }
+
+    final movedItem = itemsToDisplay[oldIndex];
+    final sourceIndex = widget.collections.items.indexWhere(
+      (item) => item.id == movedItem.id,
+    );
+    if (sourceIndex < 0) {
+      return;
+    }
+
+    final destinationId = newIndex < itemsToDisplay.length
+        ? itemsToDisplay[newIndex].id
+        : null;
+    final removed = widget.collections.items.removeAt(sourceIndex);
+
+    if (destinationId == null) {
+      widget.collections.items.add(removed);
+    } else {
+      final destinationIndex = widget.collections.items.indexWhere(
+        (item) => item.id == destinationId,
+      );
+      if (destinationIndex < 0) {
+        widget.collections.items.add(removed);
+      } else {
+        widget.collections.items.insert(destinationIndex, removed);
+      }
+    }
+
+    widget.collections.persistChanges();
+    widget.onItemsChanged();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final itemsToDisplay = filteredItems ?? collections.items;
+    final itemsToDisplay = _buildVisibleItems();
+    final hasFilters = widget.filteredItems != null;
+    final hasSearch = _searchQuery.trim().isNotEmpty;
+    final hasNoItems = widget.collections.items.isEmpty;
+
+    String emptyStateMessage = 'No items yet. Tap + to add your first item.';
+    if (hasFilters) {
+      emptyStateMessage = 'No items match your current filters.';
+    }
+    if (hasSearch) {
+      emptyStateMessage = 'No items match your search.';
+    }
+
     return Column(
       children: [
-        Text("My Inventory"),
-        Padding(padding: EdgeInsets.all(8.0)),
-        Expanded(
-          child: ReorderableListView.builder(
-            buildDefaultDragHandles: false,
-            itemCount: itemsToDisplay.length,
-            itemBuilder: (context, index) {
-              return Container(
-                key: ValueKey(itemsToDisplay.elementAt(index)),
-                child: ItemRow(
-                  i: itemsToDisplay.elementAt(index),
-                  index: index,
-                  collections: collections,
-                  onChanged: onItemsChanged,
+        const Text('My Inventory'),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.search),
+                    hintText: 'Search name, location, or status',
+                    border: const OutlineInputBorder(),
+                    suffixIcon: hasSearch
+                        ? IconButton(
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {
+                                _searchQuery = '';
+                              });
+                              unawaited(_persistListPreferences());
+                            },
+                            icon: const Icon(Icons.clear),
+                            tooltip: 'Clear search',
+                          )
+                        : null,
+                  ),
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value;
+                    });
+                    unawaited(_persistListPreferences());
+                  },
                 ),
-              );
-            },
-            onReorderItem: (oldIndex, newIndex) {
-              if (newIndex > oldIndex) {
-                newIndex -= 1;
-              }
-              final item = itemsToDisplay.elementAt(oldIndex);
-              List<Item> tempList = collections.items.toList();
-              tempList.removeAt(collections.items.toList().indexOf(item));
-              tempList.insert(newIndex, item);
-              collections.items = tempList.toSet();
-              collections.persistChanges();
-            },
+              ),
+            ],
           ),
         ),
-        Padding(padding: EdgeInsets.all(8.0)),
-        NavBar(onAddPressed: onAddPressed, scaffoldKey: _scaffoldKey),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: SortOption.values.map(_buildSortChip).toList(),
+            ),
+          ),
+        ),
+        if (!_canReorder)
+          const Padding(
+            padding: EdgeInsets.only(top: 2),
+            child: Text('Reordering is available only in manual view.'),
+          ),
+        const SizedBox(height: 8),
+        Expanded(
+          child: itemsToDisplay.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.inventory_2_outlined, size: 64),
+                      const SizedBox(height: 8),
+                      Text(emptyStateMessage),
+                      const SizedBox(height: 12),
+                      ElevatedButton.icon(
+                        onPressed: widget.onAddPressed,
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add Item'),
+                      ),
+                      if (hasSearch)
+                        TextButton(
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {
+                              _searchQuery = '';
+                            });
+                            unawaited(_persistListPreferences());
+                          },
+                          child: const Text('Clear Search'),
+                        ),
+                      if (hasFilters && !hasNoItems)
+                        TextButton(
+                          onPressed: () {
+                            widget.scaffoldKey.currentState?.openDrawer();
+                          },
+                          child: const Text('Adjust Filters'),
+                        ),
+                    ],
+                  ),
+                )
+              : _canReorder
+              ? ReorderableListView.builder(
+                  buildDefaultDragHandles: false,
+                  itemCount: itemsToDisplay.length,
+                  itemBuilder: (context, index) {
+                    return Container(
+                      key: ValueKey(itemsToDisplay[index].id),
+                      child: ItemRow(
+                        i: itemsToDisplay[index],
+                        index: index,
+                        collections: widget.collections,
+                        onChanged: widget.onItemsChanged,
+                      ),
+                    );
+                  },
+                  onReorderItem: (oldIndex, newIndex) {
+                    _reorderItems(oldIndex, newIndex, itemsToDisplay);
+                  },
+                )
+              : ListView.builder(
+                  itemCount: itemsToDisplay.length,
+                  itemBuilder: (context, index) {
+                    return ItemRow(
+                      key: ValueKey(itemsToDisplay[index].id),
+                      i: itemsToDisplay[index],
+                      index: index,
+                      collections: widget.collections,
+                      onChanged: widget.onItemsChanged,
+                    );
+                  },
+                ),
+        ),
+        const SizedBox(height: 8),
+        NavBar(
+          onAddPressed: widget.onAddPressed,
+          scaffoldKey: widget.scaffoldKey,
+        ),
       ],
     );
   }

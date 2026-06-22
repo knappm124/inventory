@@ -14,6 +14,7 @@ class EditingItem extends StatefulWidget {
 }
 
 class _EditingItemState extends State<EditingItem> {
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
   late String _location;
@@ -49,11 +50,16 @@ class _EditingItemState extends State<EditingItem> {
       return;
     }
 
-    final name = _nameController.text.trim();
-    final priceText = _priceController.text.trim();
-    if (name.isEmpty || priceText.isEmpty) {
+    final isValid = _formKey.currentState?.validate() ?? false;
+    if (!isValid) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fix the highlighted fields.')),
+      );
       return;
     }
+
+    final name = _nameController.text.trim();
+    final priceText = _priceController.text.trim();
 
     final price = double.tryParse(priceText) ?? 0.00;
     final selectedTags = <String, Set<String>>{};
@@ -100,9 +106,7 @@ class _EditingItemState extends State<EditingItem> {
     return Scaffold(
       body: Column(
         children: [
-          Padding(
-            padding: EdgeInsets.all(10)
-          ),
+          Padding(padding: EdgeInsets.all(10)),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -115,29 +119,57 @@ class _EditingItemState extends State<EditingItem> {
           ),
           Expanded(
             child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  NewName(controller: _nameController),
-                  ImageUploaderScreen(
-                    initialImagePath: _imagePath,
-                    onImageSelected: (imagePath) {
-                      setState(() {
-                        _imagePath = imagePath;
-                      });
-                    },
-                  ),
-                  NewPrice(controller: _priceController),
-                  LocationChoice(
-                    value: _location,
-                    onChanged: (value) => setState(() => _location = value),
-                  ),
-                  StatusChoice(
-                    value: _status,
-                    onChanged: (value) => setState(() => _status = value),
-                  ),
-                  ...tagRows,
-                ],
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    NewName(
+                      controller: _nameController,
+                      validator: (value) {
+                        final trimmed = value?.trim() ?? '';
+                        if (trimmed.isEmpty) {
+                          return 'Name is required.';
+                        }
+                        return null;
+                      },
+                    ),
+                    ImageUploaderScreen(
+                      initialImagePath: _imagePath,
+                      onImageSelected: (imagePath) {
+                        setState(() {
+                          _imagePath = imagePath;
+                        });
+                      },
+                    ),
+                    NewPrice(
+                      controller: _priceController,
+                      validator: (value) {
+                        final trimmed = value?.trim() ?? '';
+                        if (trimmed.isEmpty) {
+                          return 'Price is required.';
+                        }
+                        final parsed = double.tryParse(trimmed);
+                        if (parsed == null) {
+                          return 'Enter a valid number.';
+                        }
+                        if (parsed < 0) {
+                          return 'Price cannot be negative.';
+                        }
+                        return null;
+                      },
+                    ),
+                    LocationChoice(
+                      value: _location,
+                      onChanged: (value) => setState(() => _location = value),
+                    ),
+                    StatusChoice(
+                      value: _status,
+                      onChanged: (value) => setState(() => _status = value),
+                    ),
+                    ...tagRows,
+                  ],
+                ),
               ),
             ),
           ),
