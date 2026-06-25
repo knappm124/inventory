@@ -146,8 +146,8 @@ class FileMethods {
 class Collections {
   List<Item> items;
   Set<Tag> tags;
-  Set<String> locations = {"Home", "Etsy", "General Store"};
-  Set<String> status = {"WIP", "Listed", "Sold", "Returned"};
+  Set<String> locations;
+  Set<String> status;
   double maxPrice = 0;
 
   Collections(this.items, this.tags, this.locations, this.status) {
@@ -182,6 +182,18 @@ class Collections {
     }
     _recalculateMaxPrice();
     persistChanges();
+  }
+
+  Set<String> getAllLocations(){
+    return locations;
+  }
+
+  Set<String> getAllStatuses(){
+    return status;
+  }
+
+  Set<Tag> getAllTags(){
+    return tags;
   }
 
   Collections addItem(Item i) {
@@ -375,6 +387,14 @@ class Tag {
         (json['options'] as List).map((entry) => entry.toString()),
       ),
     );
+  }
+
+  String getName() {
+    return name;
+  }
+
+  Set<String> getOptions(){
+    return options;
   }
 
   @override

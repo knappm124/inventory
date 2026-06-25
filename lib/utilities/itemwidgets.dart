@@ -19,7 +19,6 @@ class ItemIcons extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         IconButton(
           onPressed: () async {
@@ -112,7 +111,6 @@ class ItemRow extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(8.0),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Image.file(
                 File(i.img),
@@ -120,18 +118,18 @@ class ItemRow extends StatelessWidget {
                 height: 100,
                 fit: BoxFit.contain,
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("Name: ${i.name}"),
-                  Text("Price: ${i.price.toStringAsFixed(2)}"),
-                  Text("Location: ${i.location}"),
-                  Text("Status: ${i.status}"),
-                ],
-              ),
-              ReorderableDragStartListener(
-                index: index,
-                child: Icon(Icons.reorder),
+              Padding(
+                padding: const EdgeInsets.all(10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Text("Name: ${i.name}"),
+                    Text("Price: ${i.price.toStringAsFixed(2)}"),
+                    Text("Location: ${i.location}"),
+                    Text("Status: ${i.status}"),
+                  ],
+                ),
               ),
             ],
           ),
@@ -178,23 +176,33 @@ class _EditableItemState extends State<EditableItem> {
     return Scaffold(
       appBar: AppBar(title: Text(_item.name)),
       body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: DefaultTextStyle(
-            style: TextStyle(color: Colors.black, fontSize: 16.0),
+        child: DefaultTextStyle(
+          style: TextStyle(color: Colors.black, fontSize: 16.0),
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
             child: Column(
+              spacing: 10,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                EditableItemHeader(
-                  i: _item,
-                  collections: widget.collections,
-                  onItemUpdated: _handleItemUpdated,
-                ),
-                Image.file(
-                  File(_item.img),
-                  width: 300,
-                  height: 300,
-                  fit: BoxFit.contain,
+                SizedBox(
+                  width: 400,
+                  height: 250,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Image.file(
+                        File(_item.img),
+                        width: 250,
+                        height: 250,
+                        fit: BoxFit.contain,
+                      ),
+                      EditableItemHeader(
+                        i: _item,
+                        collections: widget.collections,
+                        onItemUpdated: _handleItemUpdated,
+                      ),
+                    ],
+                  ),
                 ),
                 Text("Price: ${_item.price.toStringAsFixed(2)}"),
                 Text("Location: ${_item.location}"),
@@ -229,12 +237,19 @@ class EditableItemHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Spacer(),
-        ItemIcons(i: i, collections: collections, onItemUpdated: onItemUpdated),
-      ],
+    return SizedBox(
+      width: 100,
+      height: 400,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ItemIcons(
+            i: i,
+            collections: collections,
+            onItemUpdated: onItemUpdated,
+          ),
+        ],
+      ),
     );
   }
 }

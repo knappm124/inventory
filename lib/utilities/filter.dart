@@ -204,6 +204,7 @@ class _FilterState extends State<Filter> {
           children: options.map((option) {
             return FilterChip(
               label: Text(option),
+              showCheckmark: false,
               selected: selected.contains(option),
               onSelected: (isSelected) {
                 final updated = Set<String>.from(selected);

@@ -7,6 +7,7 @@ import 'utilities/newitem.dart';
 import 'utilities/collections.dart';
 import 'utilities/itemwidgets.dart';
 import 'utilities/filter.dart';
+import 'utilities/menu.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -203,11 +204,13 @@ Set<Tag> _defaultTags() {
 class NavBar extends StatelessWidget {
   final VoidCallback onAddPressed;
   final GlobalKey<ScaffoldState> _scaffoldKey;
+  final Collections c;
 
   const NavBar({
     super.key,
     required this.onAddPressed,
     required this._scaffoldKey,
+    required this.c,
   });
 
   @override
@@ -222,7 +225,13 @@ class NavBar extends StatelessWidget {
           icon: Icon(Icons.filter_alt_outlined),
         ),
         IconButton(onPressed: onAddPressed, icon: Icon(Icons.add)),
-        IconButton(onPressed: null, icon: Icon(Icons.menu)),
+        IconButton(
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => Menu(c: c)),
+          ),
+          icon: Icon(Icons.menu),
+        ),
       ],
     );
   }
@@ -248,7 +257,7 @@ class Scroll extends StatefulWidget {
   State<Scroll> createState() => _ScrollState();
 }
 
-enum SortOption { manual, nameAsc, priceLowToHigh, priceHighToLow, statusAsc }
+enum SortOption { nameAsc, priceLowToHigh, priceHighToLow, statusAsc }
 
 class _ScrollState extends State<Scroll> {
   static const String _searchPrefKey = 'inventory.searchQuery';
@@ -256,7 +265,7 @@ class _ScrollState extends State<Scroll> {
 
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
-  SortOption _sortOption = SortOption.manual;
+  SortOption _sortOption = SortOption.nameAsc;
 
   @override
   void initState() {
@@ -273,14 +282,6 @@ class _ScrollState extends State<Scroll> {
   Future<void> _restoreListPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     final savedSearch = prefs.getString(_searchPrefKey) ?? '';
-    final savedSortIndex = prefs.getInt(_sortPrefKey);
-
-    SortOption restoredSort = SortOption.manual;
-    if (savedSortIndex != null &&
-        savedSortIndex >= 0 &&
-        savedSortIndex < SortOption.values.length) {
-      restoredSort = SortOption.values[savedSortIndex];
-    }
 
     if (!mounted) {
       return;
@@ -289,7 +290,6 @@ class _ScrollState extends State<Scroll> {
     setState(() {
       _searchQuery = savedSearch;
       _searchController.text = savedSearch;
-      _sortOption = restoredSort;
     });
   }
 
@@ -297,12 +297,6 @@ class _ScrollState extends State<Scroll> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_searchPrefKey, _searchQuery);
     await prefs.setInt(_sortPrefKey, _sortOption.index);
-  }
-
-  bool get _canReorder {
-    return widget.filteredItems == null &&
-        _searchQuery.trim().isEmpty &&
-        _sortOption == SortOption.manual;
   }
 
   List<Item> _buildVisibleItems() {
@@ -320,8 +314,6 @@ class _ScrollState extends State<Scroll> {
           }).toList();
 
     switch (_sortOption) {
-      case SortOption.manual:
-        return filteredBySearch;
       case SortOption.nameAsc:
         filteredBySearch.sort((a, b) => a.name.compareTo(b.name));
         return filteredBySearch;
@@ -339,8 +331,6 @@ class _ScrollState extends State<Scroll> {
 
   String _sortLabel(SortOption option) {
     switch (option) {
-      case SortOption.manual:
-        return 'Manual';
       case SortOption.nameAsc:
         return 'Name (A-Z)';
       case SortOption.priceLowToHigh:
@@ -357,6 +347,7 @@ class _ScrollState extends State<Scroll> {
     return ChoiceChip(
       label: Text(_sortLabel(option)),
       selected: selected,
+      showCheckmark: false,
       onSelected: (_) {
         setState(() {
           _sortOption = option;
@@ -364,41 +355,6 @@ class _ScrollState extends State<Scroll> {
         unawaited(_persistListPreferences());
       },
     );
-  }
-
-  void _reorderItems(int oldIndex, int newIndex, List<Item> itemsToDisplay) {
-    if (!_canReorder) {
-      return;
-    }
-
-    final movedItem = itemsToDisplay[oldIndex];
-    final sourceIndex = widget.collections.items.indexWhere(
-      (item) => item.id == movedItem.id,
-    );
-    if (sourceIndex < 0) {
-      return;
-    }
-
-    final destinationId = newIndex < itemsToDisplay.length
-        ? itemsToDisplay[newIndex].id
-        : null;
-    final removed = widget.collections.items.removeAt(sourceIndex);
-
-    if (destinationId == null) {
-      widget.collections.items.add(removed);
-    } else {
-      final destinationIndex = widget.collections.items.indexWhere(
-        (item) => item.id == destinationId,
-      );
-      if (destinationIndex < 0) {
-        widget.collections.items.add(removed);
-      } else {
-        widget.collections.items.insert(destinationIndex, removed);
-      }
-    }
-
-    widget.collections.persistChanges();
-    widget.onItemsChanged();
   }
 
   @override
@@ -467,11 +423,6 @@ class _ScrollState extends State<Scroll> {
             ),
           ),
         ),
-        if (!_canReorder)
-          const Padding(
-            padding: EdgeInsets.only(top: 2),
-            child: Text('Reordering is available only in manual view.'),
-          ),
         const SizedBox(height: 8),
         Expanded(
           child: itemsToDisplay.isEmpty
@@ -509,25 +460,6 @@ class _ScrollState extends State<Scroll> {
                     ],
                   ),
                 )
-              : _canReorder
-              ? ReorderableListView.builder(
-                  buildDefaultDragHandles: false,
-                  itemCount: itemsToDisplay.length,
-                  itemBuilder: (context, index) {
-                    return Container(
-                      key: ValueKey(itemsToDisplay[index].id),
-                      child: ItemRow(
-                        i: itemsToDisplay[index],
-                        index: index,
-                        collections: widget.collections,
-                        onChanged: widget.onItemsChanged,
-                      ),
-                    );
-                  },
-                  onReorderItem: (oldIndex, newIndex) {
-                    _reorderItems(oldIndex, newIndex, itemsToDisplay);
-                  },
-                )
               : ListView.builder(
                   itemCount: itemsToDisplay.length,
                   itemBuilder: (context, index) {
@@ -545,6 +477,7 @@ class _ScrollState extends State<Scroll> {
         NavBar(
           onAddPressed: widget.onAddPressed,
           scaffoldKey: widget.scaffoldKey,
+          c: widget.collections,
         ),
       ],
     );
