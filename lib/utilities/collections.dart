@@ -1,13 +1,12 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:json_annotation/json_annotation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-@JsonSerializable()
 class FileMethods {
   static const String _itemsWebKey = 'items_json';
   static const String _tagsWebKey = 'tags_json';
@@ -350,7 +349,9 @@ class FileMethods {
   }
 
   static String itemsToJsonString(List<Item> itemsToEncode) {
-    return jsonEncode(itemsToEncode.map((item) => item.toJson()).toList());
+    final sortedItems = List<Item>.from(itemsToEncode)
+      ..sort((a, b) => a.id.compareTo(b.id));
+    return jsonEncode(sortedItems.map((item) => item.toJson()).toList());
   }
 
   static List<Item> itemsFromJsonString(String jsonString) {
@@ -388,7 +389,9 @@ class FileMethods {
   }
 
   static String tagsToJsonString(Set<Tag> tagsToEncode) {
-    return jsonEncode(tagsToEncode.map((tag) => tag.toJson()).toList());
+    final sortedTags = tagsToEncode.toList()
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    return jsonEncode(sortedTags.map((tag) => tag.toJson()).toList());
   }
 
   static Set<Tag> tagsFromJsonString(String jsonString) {
@@ -411,7 +414,8 @@ class FileMethods {
   }
 
   static String stringSetToJsonString(Set<String> valuesToEncode) {
-    return jsonEncode(valuesToEncode.toList());
+    final sortedValues = valuesToEncode.toList()..sort();
+    return jsonEncode(sortedValues);
   }
 
   static Set<String> stringSetFromJsonString(String jsonString) {
@@ -431,7 +435,6 @@ class FileMethods {
   }
 }
 
-@JsonSerializable()
 class Collections {
   List<Item> items;
   Set<Tag> tags;
@@ -461,7 +464,12 @@ class Collections {
   }
 
   void persistChanges() {
-    unawaited(saveToDisk());
+    unawaited(
+      saveToDisk().catchError((error, stackTrace) {
+        debugPrint('Failed to persist collections: $error');
+        debugPrintStack(stackTrace: stackTrace);
+      }),
+    );
   }
 
   void _upsertItem(Item i) {
@@ -476,21 +484,25 @@ class Collections {
   }
 
   Set<String> getAllLocations() {
-    return locations;
+    return UnmodifiableSetView(locations);
   }
 
   Set<String> getAllStatuses() {
-    return status;
+    return UnmodifiableSetView(status);
   }
 
   Set<Tag> getAllTags() {
-    return tags;
+    return UnmodifiableSetView(tags);
   }
 
   Set<String>? getTagOptions(String tagName) {
     for (Tag t in tags) {
       if (t.name == tagName) {
-        return t.options;
+        final options = t.options;
+        if (options == null) {
+          return null;
+        }
+        return UnmodifiableSetView(options);
       }
     }
     return null;
@@ -529,24 +541,18 @@ class Collections {
   }
 
   Collections addLocation(String l) {
-    for (String existingLocation in locations) {
-      if (existingLocation == l) {
-        return this;
-      }
+    final added = locations.add(l);
+    if (added) {
+      persistChanges();
     }
-    locations.add(l);
-    persistChanges();
     return this;
   }
 
   Collections addStatus(String s) {
-    for (String existingStatus in status) {
-      if (existingStatus == s) {
-        return this;
-      }
+    final added = status.add(s);
+    if (added) {
+      persistChanges();
     }
-    status.add(s);
-    persistChanges();
     return this;
   }
 
@@ -557,15 +563,15 @@ class Collections {
     return this;
   }
 
-  Collections removeTag(Tag t) {
+  Collections removeTag(String name) {
     for (Item i in items) {
-      if (i.containsTag(t.name, t.options?.first ?? '')) {
+      if (i.containsTag(name)) {
         throw Exception(
-          "Cannot remove tag ${t.name} because it is in use by item ${i.name}.",
+          "Cannot remove tag $name because it is in use by item ${i.name}.",
         );
       }
     }
-    tags.remove(t);
+    tags.removeWhere((t) => t.name == name);
     persistChanges();
     return this;
   }
@@ -574,7 +580,7 @@ class Collections {
     for (Tag existingTag in tags) {
       if (existingTag.name == tagName) {
         for (Item i in items) {
-          if (i.containsTag(tagName, option)) {
+          if (i.containsOption(tagName, option)) {
             throw Exception(
               "Cannot remove option $option from tag $tagName because it is in use by item ${i.name}.",
             );
@@ -596,12 +602,9 @@ class Collections {
         );
       }
     }
-    for (String existingLocation in locations) {
-      if (existingLocation == l) {
-        locations.remove(l);
-        persistChanges();
-        return this;
-      }
+    final removed = locations.remove(l);
+    if (removed) {
+      persistChanges();
     }
     return this;
   }
@@ -614,12 +617,9 @@ class Collections {
         );
       }
     }
-    for (String existingStatus in status) {
-      if (existingStatus == s) {
-        status.remove(s);
-        persistChanges();
-        return this;
-      }
+    final removed = status.remove(s);
+    if (removed) {
+      persistChanges();
     }
     return this;
   }
@@ -652,7 +652,7 @@ class Collections {
   static List<Item> getAllByTag(List<Item> items, String name, String option) {
     List<Item> filteredItems = [];
     for (Item i in items) {
-      if (i.containsTag(name, option)) {
+      if (i.containsOption(name, option)) {
         filteredItems.add(i);
       }
     }
@@ -670,7 +670,6 @@ class Collections {
   }
 }
 
-@JsonSerializable()
 class Item {
   String id;
   String name;
@@ -691,6 +690,13 @@ class Item {
   );
 
   Map<String, dynamic> toJson() {
+    final sortedTagKeys = tags.keys.toList()..sort();
+    final normalizedTags = <String, List<String>>{};
+    for (final key in sortedTagKeys) {
+      final sortedValues = (tags[key]?.toList() ?? <String>[])..sort();
+      normalizedTags[key] = sortedValues;
+    }
+
     return {
       'id': id,
       'name': name,
@@ -698,7 +704,7 @@ class Item {
       'location': location,
       'status': status,
       'img': img,
-      'tags': tags.map((key, value) => MapEntry(key, value.toList())),
+      'tags': normalizedTags,
     };
   }
 
@@ -723,12 +729,16 @@ class Item {
     return price >= min && price <= max;
   }
 
-  bool containsTag(String name, String option) {
+  bool containsOption(String name, String option) {
     final values = tags[name];
     if (values == null) {
       return false;
     }
     return values.contains(option);
+  }
+
+  bool containsTag(String name) {
+    return tags.containsKey(name);
   }
 
   bool hasStatus(String status) {
@@ -740,7 +750,6 @@ class Item {
   }
 }
 
-@JsonSerializable()
 class Tag {
   String name;
   Set<String>? options;
@@ -748,7 +757,8 @@ class Tag {
   Tag(this.name, this.options);
 
   Map<String, dynamic> toJson() {
-    return {'name': name, 'options': options?.toList()};
+    final sortedOptions = options == null ? null : (options!.toList()..sort());
+    return {'name': name, 'options': sortedOptions};
   }
 
   factory Tag.fromJson(Map<String, dynamic> json) {

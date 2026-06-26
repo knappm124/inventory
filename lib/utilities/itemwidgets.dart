@@ -173,6 +173,8 @@ class _EditableItemState extends State<EditableItem> {
 
   @override
   Widget build(BuildContext context) {
+    final sortedTagNames = _item.tags.keys.toList()..sort();
+
     return Scaffold(
       appBar: AppBar(title: Text(_item.name)),
       body: SingleChildScrollView(
@@ -207,11 +209,13 @@ class _EditableItemState extends State<EditableItem> {
                 Text("Price: ${_item.price.toStringAsFixed(2)}"),
                 Text("Location: ${_item.location}"),
                 Text("Status: ${_item.status}"),
-                for (String s in _item.tags.keys)
+                for (String s in sortedTagNames)
                   Row(
                     children: [
                       Text("$s: "),
-                      for (String o in _item.tags[s]!) Text("$o "),
+                      for (String o
+                          in ((_item.tags[s]?.toList() ?? <String>[])..sort()))
+                        Text("$o "),
                     ],
                   ),
               ],

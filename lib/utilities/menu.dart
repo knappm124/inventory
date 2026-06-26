@@ -25,7 +25,7 @@ class MenuItem extends StatelessWidget {
 class Editor extends StatefulWidget {
   final String tagName;
   final Collections c;
-  final TextEditingController controller = TextEditingController();
+
   String? validator(String? value) {
     if (value == null || value.isEmpty) {
       return 'Please enter a name';
@@ -40,7 +40,7 @@ class Editor extends StatefulWidget {
 }
 
 class _EditorState extends State<Editor> {
-  VoidCallback? get onPressed => null;
+  final TextEditingController controller = TextEditingController();
   String name = "";
 
   String _formatRemovalError(Object error) {
@@ -78,44 +78,48 @@ class _EditorState extends State<Editor> {
     }
   }
 
-  void _removeTag(Tag tag) {
+  void _removeTag(String tagName) {
     try {
       setState(() {
-        widget.c.removeTag(tag);
+        widget.c.removeTag(tagName);
       });
     } catch (error) {
       _showRemovalError(error);
     }
   }
 
-  void _submitLocation() {
-    name = widget.controller.text.trim();
-    if (name.isNotEmpty) {
+  void _submitLocation(String value) {
+    final input = value.trim();
+    if (input.isNotEmpty) {
       setState(() {
-        widget.c.addLocation(name);
-        widget.controller.clear();
+        widget.c.addLocation(input);
       });
     }
   }
 
-  void _submitStatus() {
-    name = widget.controller.text.trim();
-    if (name.isNotEmpty) {
+  void _submitStatus(String value) {
+    final input = value.trim();
+    if (input.isNotEmpty) {
       setState(() {
-        widget.c.addStatus(name);
-        widget.controller.clear();
+        widget.c.addStatus(input);
       });
     }
   }
 
   void _submitTag() {
-    name = widget.controller.text.trim();
+    name = controller.text.trim();
     if (name.isNotEmpty) {
       setState(() {
         widget.c.addTag(Tag(name, null));
-        widget.controller.clear();
+        controller.clear();
       });
     }
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
   }
 
   @override
@@ -128,52 +132,16 @@ class _EditorState extends State<Editor> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Padding(padding: EdgeInsets.all(10)),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
                   icon: Icon(Icons.arrow_back_sharp),
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text("Locations", style: TextStyle(fontSize: 32.0)),
-                    for (String s in widget.c.getAllLocations())
-                      SizedBox(
-                        width: 400,
-                        child: Padding(
-                          padding: EdgeInsets.all(8.0),
-                          child: Row(
-                            children: [
-                              Text(s),
-                              IconButton(
-                                onPressed: () => _removeLocation(s),
-                                icon: Icon(Icons.delete),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    Container(
-                      width: 300,
-                      padding: const EdgeInsets.all(10),
-                      child: Material(
-                        child: TextFormField(
-                          controller: widget.controller,
-                          validator: widget.validator,
-                          autovalidateMode: AutovalidateMode.onUserInteraction,
-                          textInputAction: TextInputAction.done,
-                          onFieldSubmitted: (_) => _submitLocation(),
-                          decoration: InputDecoration(
-                            labelText: 'Name',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ),
-                    ),
-                    ElevatedButton(
-                      onPressed: _submitLocation,
-                      child: Text("Add Location"),
-                    ),
-                  ],
+                _OptionEditorBody(
+                  name: "Locations",
+                  options: widget.c.getAllLocations(),
+                  onAddOption: _submitLocation,
+                  onRemoveOption: _removeLocation,
                 ),
               ],
             ),
@@ -186,64 +154,33 @@ class _EditorState extends State<Editor> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Padding(padding: EdgeInsets.all(10)),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
                   icon: Icon(Icons.arrow_back_sharp),
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text("Status", style: TextStyle(fontSize: 32.0)),
-                    for (String s in widget.c.getAllStatuses())
-                      SizedBox(
-                        width: 400,
-                        child: Padding(
-                          padding: EdgeInsets.all(8.0),
-                          child: Row(
-                            children: [
-                              Text(s),
-                              IconButton(
-                                onPressed: () => _removeStatus(s),
-                                icon: Icon(Icons.delete),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    Container(
-                      width: 300,
-                      padding: const EdgeInsets.all(10),
-                      child: Material(
-                        child: TextFormField(
-                          controller: widget.controller,
-                          validator: widget.validator,
-                          autovalidateMode: AutovalidateMode.onUserInteraction,
-                          textInputAction: TextInputAction.done,
-                          onFieldSubmitted: (_) => _submitStatus(),
-                          decoration: InputDecoration(
-                            labelText: 'Name',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ),
-                    ),
-                    ElevatedButton(
-                      onPressed: _submitStatus,
-                      child: Text("Add Status"),
-                    ),
-                  ],
+                _OptionEditorBody(
+                  name: "Status",
+                  options: widget.c.getAllStatuses(),
+                  onAddOption: _submitStatus,
+                  onRemoveOption: _removeStatus,
                 ),
               ],
             ),
           ),
         );
       case "Tags":
+        final tags = widget.c.getAllTags().toList()
+          ..sort(
+            (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+          );
         return Scaffold(
           body: DefaultTextStyle(
             style: TextStyle(color: Colors.black, fontSize: 16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Padding(padding: EdgeInsets.all(10)),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
                   icon: Icon(Icons.arrow_back_sharp),
@@ -252,7 +189,7 @@ class _EditorState extends State<Editor> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text("Tags", style: TextStyle(fontSize: 32.0)),
-                    for (Tag t in widget.c.getAllTags())
+                    for (Tag t in tags)
                       SizedBox(
                         width: 400,
                         child: Padding(
@@ -276,7 +213,7 @@ class _EditorState extends State<Editor> {
                               ),
                               IconButton(
                                 icon: Icon(Icons.delete),
-                                onPressed: () => _removeTag(t),
+                                onPressed: () => _removeTag(t.getName()),
                               ),
                             ],
                           ),
@@ -287,7 +224,7 @@ class _EditorState extends State<Editor> {
                       padding: const EdgeInsets.all(10),
                       child: Material(
                         child: TextFormField(
-                          controller: widget.controller,
+                          controller: controller,
                           validator: widget.validator,
                           autovalidateMode: AutovalidateMode.onUserInteraction,
                           textInputAction: TextInputAction.done,
@@ -337,6 +274,7 @@ class Menu extends StatelessWidget {
         mainAxisSize: MainAxisSize.max,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Padding(padding: EdgeInsets.all(10)),
           IconButton(
             onPressed: () => Navigator.pop(context),
             icon: Icon(Icons.arrow_back_sharp),
@@ -365,6 +303,83 @@ class Menu extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _OptionEditorBody extends StatefulWidget {
+  final String name;
+  final Set<String> options;
+  final ValueChanged<String> onAddOption;
+  final ValueChanged<String> onRemoveOption;
+
+  const _OptionEditorBody({
+    super.key,
+    required this.name,
+    required this.options,
+    required this.onAddOption,
+    required this.onRemoveOption,
+  });
+
+  @override
+  State<_OptionEditorBody> createState() => _OptionEditorBodyState();
+}
+
+class _OptionEditorBodyState extends State<_OptionEditorBody> {
+  final TextEditingController _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _addOption() {
+    final newOption = _controller.text.trim();
+    if (newOption.isNotEmpty) {
+      widget.onAddOption(newOption);
+      _controller.clear();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sortedOptions = widget.options.toList()..sort();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(widget.name, style: TextStyle(fontSize: 32.0)),
+        for (String option in sortedOptions)
+          Row(
+            children: [
+              Text(option),
+              IconButton(
+                icon: Icon(Icons.delete),
+                onPressed: () => widget.onRemoveOption(option),
+              ),
+            ],
+          ),
+        Padding(
+          padding: const EdgeInsets.all(10.0),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _controller,
+                  decoration: InputDecoration(
+                    labelText: 'New Option',
+                    border: OutlineInputBorder(),
+                  ),
+                  onSubmitted: (_) => _addOption(),
+                ),
+              ),
+              SizedBox(width: 10),
+              ElevatedButton(onPressed: _addOption, child: Text('Add')),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

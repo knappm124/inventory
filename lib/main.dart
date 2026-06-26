@@ -45,11 +45,18 @@ class _MainAppState extends State<MainApp> {
     final savedLocations = await fileMethods.readLocations();
     final savedStatuses = await fileMethods.readStatuses();
 
+    final loadedLocations = savedLocations.isEmpty
+        ? _defaultLocations()
+        : {...savedLocations, ..._defaultLocations()};
+    final loadedStatuses = savedStatuses.isEmpty
+        ? _defaultStatuses()
+        : {...savedStatuses, ..._defaultStatuses()};
+
     final loadedCollections = Collections(
       savedItems.isEmpty ? _defaultItems() : savedItems,
       savedTags.isEmpty ? _defaultTags() : savedTags,
-      savedLocations.isEmpty ? _defaultLocations() : savedLocations,
-      savedStatuses.isEmpty ? _defaultStatuses() : savedStatuses,
+      loadedLocations,
+      loadedStatuses,
     );
 
     if (!mounted) {

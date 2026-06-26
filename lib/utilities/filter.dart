@@ -5,32 +5,20 @@ class FilterCriteria {
   final String? status;
   final String? location;
   final RangeValues? priceRange;
-  final Set<String> color;
-  final Set<String> size;
-  final Set<String> occasion;
-  final Set<String> symbols;
-  final Set<String> division;
+  final Map<String, Set<String>> tagFilters;
 
   const FilterCriteria({
     this.status,
     this.location,
     this.priceRange,
-    this.color = const {},
-    this.size = const {},
-    this.occasion = const {},
-    this.symbols = const {},
-    this.division = const {},
+    this.tagFilters = const {},
   });
 
   bool get hasActiveFilters {
     return status != null ||
         location != null ||
         priceRange != null ||
-        color.isNotEmpty ||
-        size.isNotEmpty ||
-        occasion.isNotEmpty ||
-        symbols.isNotEmpty ||
-        division.isNotEmpty;
+        tagFilters.values.any((values) => values.isNotEmpty);
   }
 
   List<Item> apply(List<Item> items, double maxPrice) {
@@ -48,34 +36,16 @@ class FilterCriteria {
         matchLocation = item.hasLocation(location!);
       }
       final matchPrice = item.priceBetween(range.start, range.end);
-      bool matchColor = true;
-      if (color.isNotEmpty) {
-        matchColor = color.any((c) => item.containsTag('Color', c));
-      }
-      bool matchSize = true;
-      if (size.isNotEmpty) {
-        matchSize = size.any((s) => item.containsTag('Size', s));
-      }
-      bool matchOccasion = true;
-      if (occasion.isNotEmpty) {
-        matchOccasion = occasion.any((o) => item.containsTag('Occasion', o));
-      }
-      bool matchSymbols = true;
-      if (symbols.isNotEmpty) {
-        matchSymbols = symbols.any((s) => item.containsTag('Symbols', s));
-      }
-      bool matchDivision = true;
-      if (division.isNotEmpty) {
-        matchDivision = division.any((d) => item.containsTag('Division', d));
-      }
-      return matchStatus &&
-          matchLocation &&
-          matchPrice &&
-          matchColor &&
-          matchSize &&
-          matchOccasion &&
-          matchSymbols &&
-          matchDivision;
+
+      final matchTags = tagFilters.entries.every((entry) {
+        final selectedOptions = entry.value;
+        if (selectedOptions.isEmpty) return true;
+        return selectedOptions.any(
+          (option) => item.containsOption(entry.key, option),
+        );
+      });
+
+      return matchStatus && matchLocation && matchPrice && matchTags;
     }).toList();
   }
 }
@@ -103,11 +73,7 @@ class _FilterState extends State<Filter> {
   late List<Item> filtered;
   String? status;
   String? location;
-  Set<String> color = {};
-  Set<String> size = {};
-  Set<String> occasion = {};
-  Set<String> symbols = {};
-  Set<String> division = {};
+  Map<String, Set<String>> tagFilters = {};
   late double maxPrice;
   late RangeValues _currentRangeValues;
 
@@ -117,11 +83,9 @@ class _FilterState extends State<Filter> {
     c = widget.c;
     status = widget.criteria.status;
     location = widget.criteria.location;
-    color = Set<String>.from(widget.criteria.color);
-    size = Set<String>.from(widget.criteria.size);
-    occasion = Set<String>.from(widget.criteria.occasion);
-    symbols = Set<String>.from(widget.criteria.symbols);
-    division = Set<String>.from(widget.criteria.division);
+    tagFilters = widget.criteria.tagFilters.map(
+      (key, value) => MapEntry(key, Set<String>.from(value)),
+    );
     maxPrice = c.maxPrice;
     if (maxPrice < 10) {
       maxPrice = 10;
@@ -159,11 +123,9 @@ class _FilterState extends State<Filter> {
     if (oldWidget.criteria != widget.criteria) {
       status = widget.criteria.status;
       location = widget.criteria.location;
-      color = Set<String>.from(widget.criteria.color);
-      size = Set<String>.from(widget.criteria.size);
-      occasion = Set<String>.from(widget.criteria.occasion);
-      symbols = Set<String>.from(widget.criteria.symbols);
-      division = Set<String>.from(widget.criteria.division);
+      tagFilters = widget.criteria.tagFilters.map(
+        (key, value) => MapEntry(key, Set<String>.from(value)),
+      );
       _currentRangeValues =
           widget.criteria.priceRange ?? RangeValues(0, maxPrice);
     }
@@ -180,11 +142,7 @@ class _FilterState extends State<Filter> {
       status: status,
       location: location,
       priceRange: isFullPriceRange ? null : _currentRangeValues,
-      color: color,
-      size: size,
-      occasion: occasion,
-      symbols: symbols,
-      division: division,
+      tagFilters: tagFilters,
     );
   }
 
@@ -233,6 +191,18 @@ class _FilterState extends State<Filter> {
 
   @override
   Widget build(BuildContext context) {
+    final statusOptions = c.getAllStatuses().toList()..sort();
+    final locationOptions = c.getAllLocations().toList()..sort();
+    final sortedTags = widget.c.tags.toList()
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    final selectedStatus = status != null && statusOptions.contains(status)
+        ? <String>{status!}
+        : <String>{};
+    final selectedLocation =
+        location != null && locationOptions.contains(location)
+        ? <String>{location!}
+        : <String>{};
+
     return Drawer(
       width: 400,
       child: ListView(
@@ -254,14 +224,14 @@ class _FilterState extends State<Filter> {
           Text("Status"),
           SegmentedButton<String>(
             showSelectedIcon: false,
-            segments: const <ButtonSegment<String>>[
-              ButtonSegment<String>(value: 'WIP', label: Text('WIP')),
-              ButtonSegment<String>(value: 'Listed', label: Text('Listed')),
-              ButtonSegment<String>(value: 'Sold', label: Text('Sold')),
-              ButtonSegment<String>(value: 'Returned', label: Text('Returned')),
-            ],
+            segments: statusOptions
+                .map(
+                  (value) =>
+                      ButtonSegment<String>(value: value, label: Text(value)),
+                )
+                .toList(),
             emptySelectionAllowed: true,
-            selected: <String>{?status},
+            selected: selectedStatus,
             onSelectionChanged: ((Set<String> newValue) {
               setState(() {
                 status = newValue.firstOrNull;
@@ -272,16 +242,14 @@ class _FilterState extends State<Filter> {
           Text("Location"),
           SegmentedButton<String>(
             showSelectedIcon: false,
-            segments: const <ButtonSegment<String>>[
-              ButtonSegment<String>(value: 'Home', label: Text('Home')),
-              ButtonSegment<String>(value: 'Etsy', label: Text('Etsy')),
-              ButtonSegment<String>(
-                value: 'General Store',
-                label: Text('General Store'),
-              ),
-            ],
+            segments: locationOptions
+                .map(
+                  (value) =>
+                      ButtonSegment<String>(value: value, label: Text(value)),
+                )
+                .toList(),
             emptySelectionAllowed: true,
-            selected: <String>{?location},
+            selected: selectedLocation,
             onSelectionChanged: ((Set<String> newValue) {
               setState(() {
                 location = newValue.firstOrNull;
@@ -307,92 +275,19 @@ class _FilterState extends State<Filter> {
               });
             },
           ),
-          _buildChipSection(
-            title: "Color",
-            options: const [
-              'Red',
-              'Orange',
-              'Yellow',
-              'Green',
-              'Blue',
-              'Purple',
-              'Pink',
-              'Brown',
-              'Black',
-            ],
-            selected: color,
-            onChanged: (newValue) {
-              setState(() {
-                color = newValue;
-              });
-              _filterList();
-            },
-          ),
-          _buildChipSection(
-            title: "Size",
-            options: const [
-              'Quail',
-              'Pullet',
-              'Chicken',
-              'Duck',
-              'Goose',
-              'Rhea',
-              'Ostrich',
-            ],
-            selected: size,
-            onChanged: (newValue) {
-              setState(() {
-                size = newValue;
-              });
-              _filterList();
-            },
-          ),
-          _buildChipSection(
-            title: "Occasion",
-            options: const [
-              'Baby',
-              'Christmas',
-              'Easter',
-              'Fall',
-              'Spring',
-              'Wedding',
-            ],
-            selected: occasion,
-            onChanged: (newValue) {
-              setState(() {
-                occasion = newValue;
-              });
-              _filterList();
-            },
-          ),
-          _buildChipSection(
-            title: "Symbols",
-            options: const ['Animal', 'Person', 'Plants', 'Religious', 'Star'],
-            selected: symbols,
-            onChanged: (newValue) {
-              setState(() {
-                symbols = newValue;
-              });
-              _filterList();
-            },
-          ),
-          _buildChipSection(
-            title: "Division",
-            options: const [
-              'Band',
-              'Circles',
-              'Diagonal Band',
-              'Four Panels',
-              'Star',
-            ],
-            selected: division,
-            onChanged: (newValue) {
-              setState(() {
-                division = newValue;
-              });
-              _filterList();
-            },
-          ),
+          for (final tag in sortedTags)
+            if (tag.options != null && tag.options!.isNotEmpty)
+              _buildChipSection(
+                title: tag.name,
+                options: (tag.options!.toList()..sort()),
+                selected: tagFilters[tag.name] ?? {},
+                onChanged: (newValue) {
+                  setState(() {
+                    tagFilters = Map.from(tagFilters)..[tag.name] = newValue;
+                  });
+                  _filterList();
+                },
+              ),
         ],
       ),
     );

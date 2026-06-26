@@ -115,10 +115,13 @@ class _NewItemState extends State<NewItem> {
 
   @override
   Widget build(BuildContext context) {
-    final tagRows = widget.collections.tags.map((tag) {
+    final sortedTags = widget.collections.tags.toList()
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+
+    final tagRows = sortedTags.map((tag) {
       return TagSelectorRow(
         tagName: tag.name,
-        options: tag.options?.toList() ?? [],
+        options: (tag.options?.toList() ?? [])..sort(),
         selectedValues: _selectedTagValues[tag.name] ?? <String>{},
         onSelectionChanged: (newSelection) {
           setState(() {
@@ -286,6 +289,7 @@ class LocationChoice extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(10),
       child: SegmentedButton<String>(
+        showSelectedIcon: false,
         segments: options
             .map(
               (option) =>
@@ -322,6 +326,7 @@ class StatusChoice extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(10),
       child: SegmentedButton<String>(
+        showSelectedIcon: false,
         segments: options
             .map(
               (option) =>

@@ -101,10 +101,13 @@ class _EditingItemState extends State<EditingItem> {
       statusOptions.insert(0, _status);
     }
 
-    final tagRows = widget.collections.tags.map((tag) {
+    final sortedTags = widget.collections.tags.toList()
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+
+    final tagRows = sortedTags.map((tag) {
       return TagSelectorRow(
         tagName: tag.name,
-        options: tag.options?.toList() ?? [],
+        options: (tag.options?.toList() ?? [])..sort(),
         selectedValues: _selectedTagValues[tag.name] ?? <String>{},
         onSelectionChanged: (newSelection) {
           setState(() {
