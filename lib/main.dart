@@ -39,14 +39,17 @@ class _MainAppState extends State<MainApp> {
   }
 
   Future<void> _loadCollections() async {
-    final savedItems = await FileMethods().readItems();
-    final savedTags = await FileMethods().readTags();
+    final fileMethods = FileMethods();
+    final savedItems = await fileMethods.readItems();
+    final savedTags = await fileMethods.readTags();
+    final savedLocations = await fileMethods.readLocations();
+    final savedStatuses = await fileMethods.readStatuses();
 
     final loadedCollections = Collections(
       savedItems.isEmpty ? _defaultItems() : savedItems,
       savedTags.isEmpty ? _defaultTags() : savedTags,
-      {"Etsy", "Home", "General Store"},
-      {"WIP", "Sold", "Listed", "Returned"},
+      savedLocations.isEmpty ? _defaultLocations() : savedLocations,
+      savedStatuses.isEmpty ? _defaultStatuses() : savedStatuses,
     );
 
     if (!mounted) {
@@ -153,6 +156,14 @@ class _MainAppState extends State<MainApp> {
       ),
     );
   }
+}
+
+Set<String> _defaultLocations() {
+  return {'Etsy', 'Home', 'General Store'};
+}
+
+Set<String> _defaultStatuses() {
+  return {'WIP', 'Sold', 'Listed', 'Returned'};
 }
 
 List<Item> _defaultItems() {
@@ -374,7 +385,10 @@ class _ScrollState extends State<Scroll> {
 
     return Column(
       children: [
-        const Text('My Inventory', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+        const Text(
+          'My Inventory',
+          style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 8),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),

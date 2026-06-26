@@ -90,10 +90,21 @@ class _EditingItemState extends State<EditingItem> {
 
   @override
   Widget build(BuildContext context) {
+    final locationOptions = widget.collections.getAllLocations().toList()
+      ..sort();
+    if (!locationOptions.contains(_location)) {
+      locationOptions.insert(0, _location);
+    }
+
+    final statusOptions = widget.collections.getAllStatuses().toList()..sort();
+    if (!statusOptions.contains(_status)) {
+      statusOptions.insert(0, _status);
+    }
+
     final tagRows = widget.collections.tags.map((tag) {
       return TagSelectorRow(
         tagName: tag.name,
-        options: tag.options!.toList(),
+        options: tag.options?.toList() ?? [],
         selectedValues: _selectedTagValues[tag.name] ?? <String>{},
         onSelectionChanged: (newSelection) {
           setState(() {
@@ -160,10 +171,12 @@ class _EditingItemState extends State<EditingItem> {
                       },
                     ),
                     LocationChoice(
+                      options: locationOptions,
                       value: _location,
                       onChanged: (value) => setState(() => _location = value),
                     ),
                     StatusChoice(
+                      options: statusOptions,
                       value: _status,
                       onChanged: (value) => setState(() => _status = value),
                     ),

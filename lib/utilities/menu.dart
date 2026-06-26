@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import './collections.dart';
+import './edittag.dart';
 
 class MenuItem extends StatelessWidget {
   final Collections c;
@@ -41,6 +42,51 @@ class Editor extends StatefulWidget {
 class _EditorState extends State<Editor> {
   VoidCallback? get onPressed => null;
   String name = "";
+
+  String _formatRemovalError(Object error) {
+    final raw = error.toString();
+    const exceptionPrefix = 'Exception: ';
+    if (raw.startsWith(exceptionPrefix)) {
+      return raw.substring(exceptionPrefix.length);
+    }
+    return raw;
+  }
+
+  void _showRemovalError(Object error) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(_formatRemovalError(error))));
+  }
+
+  void _removeLocation(String location) {
+    try {
+      setState(() {
+        widget.c.removeLocation(location);
+      });
+    } catch (error) {
+      _showRemovalError(error);
+    }
+  }
+
+  void _removeStatus(String status) {
+    try {
+      setState(() {
+        widget.c.removeStatus(status);
+      });
+    } catch (error) {
+      _showRemovalError(error);
+    }
+  }
+
+  void _removeTag(Tag tag) {
+    try {
+      setState(() {
+        widget.c.removeTag(tag);
+      });
+    } catch (error) {
+      _showRemovalError(error);
+    }
+  }
 
   void _submitLocation() {
     name = widget.controller.text.trim();
@@ -99,9 +145,7 @@ class _EditorState extends State<Editor> {
                             children: [
                               Text(s),
                               IconButton(
-                                onPressed: () => setState(() {
-                                  widget.c.removeLocation(s);
-                                }),
+                                onPressed: () => _removeLocation(s),
                                 icon: Icon(Icons.delete),
                               ),
                             ],
@@ -159,9 +203,7 @@ class _EditorState extends State<Editor> {
                             children: [
                               Text(s),
                               IconButton(
-                                onPressed: () => setState(() {
-                                  widget.c.removeStatus(s);
-                                }),
+                                onPressed: () => _removeStatus(s),
                                 icon: Icon(Icons.delete),
                               ),
                             ],
@@ -220,13 +262,21 @@ class _EditorState extends State<Editor> {
                               Text(t.getName()),
                               IconButton(
                                 icon: Icon(Icons.edit),
-                                onPressed: () => {},
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => EditTag(
+                                        tag: t.getName(),
+                                        collections: widget.c,
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
                               IconButton(
                                 icon: Icon(Icons.delete),
-                                onPressed: () => setState(() {
-                                  widget.c.removeTag(t);
-                                }),
+                                onPressed: () => _removeTag(t),
                               ),
                             ],
                           ),

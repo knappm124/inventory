@@ -20,10 +20,40 @@ class _NewItemState extends State<NewItem> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
-  String _location = 'Home';
-  String _status = 'WIP';
+  late String _location;
+  late String _status;
   String _imagePath = '';
   final Map<String, Set<String>> _selectedTagValues = {};
+
+  @override
+  void initState() {
+    super.initState();
+    final locationOptions = widget.collections.getAllLocations().toList();
+    final statusOptions = widget.collections.getAllStatuses().toList();
+
+    _location = locationOptions.contains('Home')
+        ? 'Home'
+        : (locationOptions.isNotEmpty ? locationOptions.first : 'Home');
+    _status = statusOptions.contains('WIP')
+        ? 'WIP'
+        : (statusOptions.isNotEmpty ? statusOptions.first : 'WIP');
+  }
+
+  List<String> _locationOptions() {
+    final options = widget.collections.getAllLocations().toList()..sort();
+    if (!options.contains(_location)) {
+      options.insert(0, _location);
+    }
+    return options;
+  }
+
+  List<String> _statusOptions() {
+    final options = widget.collections.getAllStatuses().toList()..sort();
+    if (!options.contains(_status)) {
+      options.insert(0, _status);
+    }
+    return options;
+  }
 
   @override
   void dispose() {
@@ -37,6 +67,22 @@ class _NewItemState extends State<NewItem> {
       return;
     }
 
+    final name = _nameController.text.trim();
+    final priceText = _priceController.text.trim();
+
+    if (name.isEmpty || priceText.isEmpty) {
+      _formKey.currentState?.validate();
+      final message = name.isEmpty && priceText.isEmpty
+          ? 'Name and price are required.'
+          : name.isEmpty
+          ? 'Name is required.'
+          : 'Price is required.';
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+      return;
+    }
+
     final isValid = _formKey.currentState?.validate() ?? false;
     if (!isValid) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -44,9 +90,6 @@ class _NewItemState extends State<NewItem> {
       );
       return;
     }
-
-    final name = _nameController.text.trim();
-    final priceText = _priceController.text.trim();
 
     final price = double.tryParse(priceText) ?? 0.0;
     final selectedTags = <String, Set<String>>{};
@@ -142,10 +185,12 @@ class _NewItemState extends State<NewItem> {
                       },
                     ),
                     LocationChoice(
+                      options: _locationOptions(),
                       value: _location,
                       onChanged: (value) => setState(() => _location = value),
                     ),
                     StatusChoice(
+                      options: _statusOptions(),
                       value: _status,
                       onChanged: (value) => setState(() => _status = value),
                     ),
@@ -221,29 +266,33 @@ class NewPrice extends StatelessWidget {
 }
 
 class LocationChoice extends StatelessWidget {
+  final List<String> options;
   final String value;
   final ValueChanged<String> onChanged;
 
   const LocationChoice({
     super.key,
+    required this.options,
     required this.value,
     required this.onChanged,
   });
 
   @override
   Widget build(BuildContext context) {
+    final safeValue = options.contains(value)
+        ? value
+        : (options.isNotEmpty ? options.first : value);
+
     return Container(
       padding: const EdgeInsets.all(10),
       child: SegmentedButton<String>(
-        segments: const <ButtonSegment<String>>[
-          ButtonSegment<String>(value: 'Home', label: Text('Home')),
-          ButtonSegment<String>(value: 'Etsy', label: Text('Etsy')),
-          ButtonSegment<String>(
-            value: 'General Store',
-            label: Text('General Store'),
-          ),
-        ],
-        selected: <String>{value},
+        segments: options
+            .map(
+              (option) =>
+                  ButtonSegment<String>(value: option, label: Text(option)),
+            )
+            .toList(),
+        selected: <String>{safeValue},
         onSelectionChanged: (Set<String> newSelection) {
           onChanged(newSelection.first);
         },
@@ -253,23 +302,33 @@ class LocationChoice extends StatelessWidget {
 }
 
 class StatusChoice extends StatelessWidget {
+  final List<String> options;
   final String value;
   final ValueChanged<String> onChanged;
 
-  const StatusChoice({super.key, required this.value, required this.onChanged});
+  const StatusChoice({
+    super.key,
+    required this.options,
+    required this.value,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final safeValue = options.contains(value)
+        ? value
+        : (options.isNotEmpty ? options.first : value);
+
     return Container(
       padding: const EdgeInsets.all(10),
       child: SegmentedButton<String>(
-        segments: const <ButtonSegment<String>>[
-          ButtonSegment<String>(value: 'WIP', label: Text('WIP')),
-          ButtonSegment<String>(value: 'Listed', label: Text('Listed')),
-          ButtonSegment<String>(value: 'Sold', label: Text('Sold')),
-          ButtonSegment<String>(value: 'Returned', label: Text('Returned')),
-        ],
-        selected: <String>{value},
+        segments: options
+            .map(
+              (option) =>
+                  ButtonSegment<String>(value: option, label: Text(option)),
+            )
+            .toList(),
+        selected: <String>{safeValue},
         onSelectionChanged: (Set<String> newSelection) {
           onChanged(newSelection.first);
         },
