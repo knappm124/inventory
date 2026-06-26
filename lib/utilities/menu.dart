@@ -1,98 +1,277 @@
 import 'package:flutter/material.dart';
 import './collections.dart';
 
-class MenuItem extends StatefulWidget {
+class MenuItem extends StatelessWidget {
   final Collections c;
   final String name;
 
   const MenuItem({super.key, required this.c, required this.name});
 
   @override
-  State<MenuItem> createState() {
-    return _MenuItemState();
-  }
-}
-
-class _MenuItemState extends State<MenuItem> {
-  @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => TagEditor(tagName: widget.name, c: widget.c),
+          builder: (context) => Editor(tagName: name, c: c),
         ),
       ),
-      child: Text(widget.name),
+      child: Text(name),
     );
   }
 }
 
-class TagEditor extends StatelessWidget {
+class Editor extends StatefulWidget {
   final String tagName;
   final Collections c;
+  final TextEditingController controller = TextEditingController();
+  String? validator(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Please enter a name';
+    }
+    return null;
+  }
 
-  const TagEditor({super.key, required this.tagName, required this.c});
+  Editor({super.key, required this.tagName, required this.c});
 
+  @override
+  State<Editor> createState() => _EditorState();
+}
+
+class _EditorState extends State<Editor> {
   VoidCallback? get onPressed => null;
+  String name = "";
+
+  void _submitLocation() {
+    name = widget.controller.text.trim();
+    if (name.isNotEmpty) {
+      setState(() {
+        widget.c.addLocation(name);
+        widget.controller.clear();
+      });
+    }
+  }
+
+  void _submitStatus() {
+    name = widget.controller.text.trim();
+    if (name.isNotEmpty) {
+      setState(() {
+        widget.c.addStatus(name);
+        widget.controller.clear();
+      });
+    }
+  }
+
+  void _submitTag() {
+    name = widget.controller.text.trim();
+    if (name.isNotEmpty) {
+      setState(() {
+        widget.c.addTag(Tag(name, null));
+        widget.controller.clear();
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    switch (tagName) {
+    switch (widget.tagName) {
       case "Locations":
-        return DefaultTextStyle(
-          style: TextStyle(color: Colors.black, fontSize: 16.0),
-          child: Column(
-            children: [
-              Text("Locations"),
-              for (String s in c.getAllLocations())
-                SizedBox(
-                  width: 400,
-                  child: Row(
-                    children: [
-                      Text(s),
-                      IconButton(
-                        onPressed: () => {c.removeLocation(s)},
-                        icon: Icon(Icons.delete),
-                      ),
-                    ],
-                  ),
+        return Scaffold(
+          body: DefaultTextStyle(
+            style: TextStyle(color: Colors.black, fontSize: 16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: Icon(Icons.arrow_back_sharp),
                 ),
-              ElevatedButton(onPressed: onPressed, child: Text("Add Location")),
-            ],
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text("Locations", style: TextStyle(fontSize: 32.0)),
+                    for (String s in widget.c.getAllLocations())
+                      SizedBox(
+                        width: 400,
+                        child: Padding(
+                          padding: EdgeInsets.all(8.0),
+                          child: Row(
+                            children: [
+                              Text(s),
+                              IconButton(
+                                onPressed: () => setState(() {
+                                  widget.c.removeLocation(s);
+                                }),
+                                icon: Icon(Icons.delete),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    Container(
+                      width: 300,
+                      padding: const EdgeInsets.all(10),
+                      child: Material(
+                        child: TextFormField(
+                          controller: widget.controller,
+                          validator: widget.validator,
+                          autovalidateMode: AutovalidateMode.onUserInteraction,
+                          textInputAction: TextInputAction.done,
+                          onFieldSubmitted: (_) => _submitLocation(),
+                          decoration: InputDecoration(
+                            labelText: 'Name',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: _submitLocation,
+                      child: Text("Add Location"),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         );
       case "Status":
-      case "Tags":
-        return Column(
-          children: [
-            Text(tagName),
-            for (Tag t in c.getAllTags())
-              Column(
-                children: [
-                  Text(t.getName()),
-                  for (String s in t.getOptions()) Column(children: [Text(s)]),
-                ],
-              ),
-            TextField(),
-            ElevatedButton(onPressed: () => {}, child: Text("Add")),
-          ],
+        return Scaffold(
+          body: DefaultTextStyle(
+            style: TextStyle(color: Colors.black, fontSize: 16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: Icon(Icons.arrow_back_sharp),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text("Status", style: TextStyle(fontSize: 32.0)),
+                    for (String s in widget.c.getAllStatuses())
+                      SizedBox(
+                        width: 400,
+                        child: Padding(
+                          padding: EdgeInsets.all(8.0),
+                          child: Row(
+                            children: [
+                              Text(s),
+                              IconButton(
+                                onPressed: () => setState(() {
+                                  widget.c.removeStatus(s);
+                                }),
+                                icon: Icon(Icons.delete),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    Container(
+                      width: 300,
+                      padding: const EdgeInsets.all(10),
+                      child: Material(
+                        child: TextFormField(
+                          controller: widget.controller,
+                          validator: widget.validator,
+                          autovalidateMode: AutovalidateMode.onUserInteraction,
+                          textInputAction: TextInputAction.done,
+                          onFieldSubmitted: (_) => _submitStatus(),
+                          decoration: InputDecoration(
+                            labelText: 'Name',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: _submitStatus,
+                      child: Text("Add Status"),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         );
-    }
-    return Column(
-      children: [
-        Text(tagName),
-        for (Tag t in c.getAllTags())
-          Column(
+      case "Tags":
+        return Scaffold(
+          body: DefaultTextStyle(
+            style: TextStyle(color: Colors.black, fontSize: 16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: Icon(Icons.arrow_back_sharp),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text("Tags", style: TextStyle(fontSize: 32.0)),
+                    for (Tag t in widget.c.getAllTags())
+                      SizedBox(
+                        width: 400,
+                        child: Padding(
+                          padding: EdgeInsets.all(8.0),
+                          child: Row(
+                            children: [
+                              Text(t.getName()),
+                              IconButton(
+                                icon: Icon(Icons.edit),
+                                onPressed: () => {},
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.delete),
+                                onPressed: () => setState(() {
+                                  widget.c.removeTag(t);
+                                }),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    Container(
+                      width: 300,
+                      padding: const EdgeInsets.all(10),
+                      child: Material(
+                        child: TextFormField(
+                          controller: widget.controller,
+                          validator: widget.validator,
+                          autovalidateMode: AutovalidateMode.onUserInteraction,
+                          textInputAction: TextInputAction.done,
+                          onFieldSubmitted: (_) => _submitTag(),
+                          decoration: InputDecoration(
+                            labelText: 'Name',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: _submitTag,
+                      child: Text("Add Tag"),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      default:
+        return Scaffold(
+          body: Column(
             children: [
-              Text(t.getName()),
-              for (String s in t.getOptions()) Column(children: [Text(s)]),
+              Text("Unknown tag name: ${widget.tagName}"),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text("Back"),
+              ),
             ],
           ),
-        TextField(),
-        ElevatedButton(onPressed: () => {}, child: Text("Add")),
-      ],
-    );
+        );
+    }
   }
 }
 
@@ -105,14 +284,35 @@ class Menu extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Column(
+        mainAxisSize: MainAxisSize.max,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           IconButton(
             onPressed: () => Navigator.pop(context),
             icon: Icon(Icons.arrow_back_sharp),
           ),
-          MenuItem(c: c, name: "Locations"),
-          MenuItem(c: c, name: "Status"),
-          MenuItem(c: c, name: "Tags"),
+          DefaultTextStyle(
+            style: TextStyle(color: Colors.black, fontSize: 32.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.max,
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: EdgeInsets.all(10.0),
+                  child: MenuItem(c: c, name: "Locations"),
+                ),
+                Padding(
+                  padding: EdgeInsets.all(10.0),
+                  child: MenuItem(c: c, name: "Status"),
+                ),
+                Padding(
+                  padding: EdgeInsets.all(10.0),
+                  child: MenuItem(c: c, name: "Tags"),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

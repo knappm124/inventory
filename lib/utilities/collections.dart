@@ -202,6 +202,13 @@ class Collections {
   }
 
   Collections addTag(Tag t) {
+    for(Tag existingTag in tags) {
+      if (existingTag.name == t.name) {
+        existingTag.options?.addAll(t.options ?? {});
+        persistChanges();
+        return this;
+      }
+    }
     tags.add(t);
     persistChanges();
     return this;
@@ -245,7 +252,7 @@ class Collections {
   }
 
   Collections editTag(Tag t) {
-    tags.removeWhere((Tag tag) => tag.id == t.id);
+    tags.removeWhere((Tag tag) => tag.name == t.name);
     tags.add(t);
     persistChanges();
     return this;
@@ -369,23 +376,24 @@ class Item {
 
 @JsonSerializable()
 class Tag {
-  String id;
   String name;
-  Set<String> options;
+  Set<String>? options;
 
-  Tag(this.id, this.name, this.options);
+  Tag(this.name, this.options);
 
   Map<String, dynamic> toJson() {
-    return {'id': id, 'name': name, 'options': options.toList()};
+    return {'name': name, 'options': options?.toList()};
+
   }
 
   factory Tag.fromJson(Map<String, dynamic> json) {
     return Tag(
-      json['id'] as String,
       json['name'] as String,
-      Set<String>.from(
-        (json['options'] as List).map((entry) => entry.toString()),
-      ),
+      json['options'] != null
+          ? Set<String>.from(
+              (json['options'] as List).map((entry) => entry.toString()),
+            )
+          : null,
     );
   }
 
@@ -393,7 +401,7 @@ class Tag {
     return name;
   }
 
-  Set<String> getOptions(){
+  Set<String>? getOptions(){
     return options;
   }
 
@@ -403,14 +411,15 @@ class Tag {
   }
 
   Tag addOption(String o) {
-    if (!options.contains(o)) {
-      options.add(o);
+    options ??= <String>{};
+    if (!options!.contains(o)) {
+      options!.add(o);
     }
     return this;
   }
 
   Tag removeOption(String o) {
-    options.remove(o);
+    options?.remove(o);
     return this;
   }
 }

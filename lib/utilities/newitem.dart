@@ -75,7 +75,7 @@ class _NewItemState extends State<NewItem> {
     final tagRows = widget.collections.tags.map((tag) {
       return TagSelectorRow(
         tagName: tag.name,
-        options: tag.options.toList(),
+        options: tag.options?.toList() ?? [],
         selectedValues: _selectedTagValues[tag.name] ?? <String>{},
         onSelectionChanged: (newSelection) {
           setState(() {

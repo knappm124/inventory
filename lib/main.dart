@@ -161,7 +161,7 @@ List<Item> _defaultItems() {
 
 Set<Tag> _defaultTags() {
   return {
-    Tag("1", "Color", {
+    Tag("Color", {
       "Red",
       "Orange",
       "Yellow",
@@ -172,7 +172,7 @@ Set<Tag> _defaultTags() {
       "Brown",
       "Black",
     }),
-    Tag("2", "Size", {
+    Tag("Size", {
       "Quail",
       "Pullet",
       "Chicken",
@@ -181,7 +181,7 @@ Set<Tag> _defaultTags() {
       "Rhea",
       "Ostrich",
     }),
-    Tag("3", "Occasion", {
+    Tag("Occasion", {
       "Baby",
       "Christmas",
       "Easter",
@@ -189,8 +189,8 @@ Set<Tag> _defaultTags() {
       "Spring",
       "Wedding",
     }),
-    Tag("4", "Symbols", {"Animal", "Person", "Plants", "Religious", "Star"}),
-    Tag("5", "Division", {
+    Tag("Symbols", {"Animal", "Person", "Plants", "Religious", "Star"}),
+    Tag("Division", {
       "Band",
       "Circles",
       "Diagonal Band",
@@ -374,7 +374,7 @@ class _ScrollState extends State<Scroll> {
 
     return Column(
       children: [
-        const Text('My Inventory'),
+        const Text('My Inventory', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
