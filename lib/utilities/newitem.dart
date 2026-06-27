@@ -1,11 +1,10 @@
-import 'dart:io';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path/path.dart' as path;
-import 'package:path_provider/path_provider.dart' as p;
 import 'collections.dart';
+import 'image_utils.dart';
 
 class NewItem extends StatefulWidget {
   final Collections collections;
@@ -410,57 +409,86 @@ class ImageUploaderScreen extends StatefulWidget {
 }
 
 class _ImageUploaderScreenState extends State<ImageUploaderScreen> {
-  File? _savedImage;
+  Uint8List? _savedImageBytes;
   final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
-    _syncImage(widget.initialImagePath);
+    unawaited(_syncImage(widget.initialImagePath));
   }
 
   @override
   void didUpdateWidget(covariant ImageUploaderScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.initialImagePath != widget.initialImagePath) {
-      _syncImage(widget.initialImagePath);
+      unawaited(_syncImage(widget.initialImagePath));
     }
   }
 
-  void _syncImage(String imagePath) {
-    if (imagePath.isEmpty) {
-      setState(() {
-        _savedImage = null;
-      });
+  Future<void> _syncImage(String imagePath) async {
+    final bytes = await _loadPreviewBytes(imagePath);
+    if (!mounted) {
       return;
     }
 
     setState(() {
-      _savedImage = File(imagePath);
+      _savedImageBytes = bytes;
     });
   }
 
-  // Function to pick and save the image locally
+  Future<Uint8List?> _loadPreviewBytes(String imagePath) async {
+    if (imagePath.isEmpty) {
+      return null;
+    }
+
+    final dataUriBytes = decodeImageFromDataUri(imagePath);
+    if (dataUriBytes != null && dataUriBytes.isNotEmpty) {
+      return dataUriBytes;
+    }
+
+    try {
+      final bytes = await XFile(imagePath).readAsBytes();
+      if (bytes.isEmpty) {
+        return null;
+      }
+      return bytes;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _pickAndSaveImage() async {
     try {
       final XFile? pickedFile = await _picker.pickImage(
         source: ImageSource.gallery,
-        imageQuality: 85, // Optional compression
+        imageQuality: 85,
       );
 
-      if (pickedFile == null) return; // User canceled
-
-      final Directory appDocDir = await p.getApplicationDocumentsDirectory();
-      final String fileName = path.basename(pickedFile.path);
-      final String targetPath = path.join(appDocDir.path, fileName);
-      final File localImage = await File(pickedFile.path).copy(targetPath);
-
-      widget.onImageSelected(localImage.path);
-      if (mounted) {
-        setState(() {
-          _savedImage = localImage;
-        });
+      if (pickedFile == null) {
+        return;
       }
+
+      final imageBytes = await pickedFile.readAsBytes();
+      if (imageBytes.isEmpty) {
+        throw Exception('Selected image is empty.');
+      }
+
+      final encodedImage = encodeImageToDataUri(
+        imageBytes,
+        mimeType: pickedFile.mimeType,
+        path: pickedFile.path,
+      );
+
+      widget.onImageSelected(encodedImage);
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _savedImageBytes = imageBytes;
+      });
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -485,10 +513,10 @@ class _ImageUploaderScreenState extends State<ImageUploaderScreen> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.grey[400]!),
             ),
-            child: _savedImage != null && _savedImage!.existsSync()
+            child: _savedImageBytes != null && _savedImageBytes!.isNotEmpty
                 ? ClipRRect(
                     borderRadius: BorderRadius.circular(11),
-                    child: Image.file(_savedImage!, fit: BoxFit.cover),
+                    child: Image.memory(_savedImageBytes!, fit: BoxFit.cover),
                   )
                 : const Icon(
                     Icons.image_not_supported,
@@ -500,7 +528,7 @@ class _ImageUploaderScreenState extends State<ImageUploaderScreen> {
           ElevatedButton.icon(
             onPressed: _pickAndSaveImage,
             icon: const Icon(Icons.upload_file),
-            label: const Text('Upload & Save Image'),
+            label: const Text('Upload Image'),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               textStyle: const TextStyle(fontSize: 16),

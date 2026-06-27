@@ -1,8 +1,7 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:inventory/utilities/editing.dart';
 import 'collections.dart';
+import 'image_utils.dart';
 
 class ItemIcons extends StatelessWidget {
   final Item i;
@@ -112,8 +111,8 @@ class ItemRow extends StatelessWidget {
           padding: const EdgeInsets.all(8.0),
           child: Row(
             children: [
-              Image.file(
-                File(i.img),
+              buildInventoryImage(
+                source: i.img,
                 width: 100,
                 height: 100,
                 fit: BoxFit.contain,
@@ -192,8 +191,8 @@ class _EditableItemState extends State<EditableItem> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Image.file(
-                        File(_item.img),
+                      buildInventoryImage(
+                        source: _item.img,
                         width: 250,
                         height: 250,
                         fit: BoxFit.contain,

@@ -33,7 +33,7 @@ class Editor extends StatefulWidget {
     return null;
   }
 
-  Editor({super.key, required this.tagName, required this.c});
+  const Editor({super.key, required this.tagName, required this.c});
 
   @override
   State<Editor> createState() => _EditorState();
@@ -314,7 +314,6 @@ class _OptionEditorBody extends StatefulWidget {
   final ValueChanged<String> onRemoveOption;
 
   const _OptionEditorBody({
-    super.key,
     required this.name,
     required this.options,
     required this.onAddOption,
@@ -346,23 +345,23 @@ class _OptionEditorBodyState extends State<_OptionEditorBody> {
   Widget build(BuildContext context) {
     final sortedOptions = widget.options.toList()..sort();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(widget.name, style: TextStyle(fontSize: 32.0)),
-        for (String option in sortedOptions)
+    return Padding(
+      padding: EdgeInsets.all(10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(widget.name, style: TextStyle(fontSize: 32.0)),
+          for (String option in sortedOptions)
+            Row(
+              children: [
+                Text(option),
+                IconButton(
+                  icon: Icon(Icons.delete),
+                  onPressed: () => widget.onRemoveOption(option),
+                ),
+              ],
+            ),
           Row(
-            children: [
-              Text(option),
-              IconButton(
-                icon: Icon(Icons.delete),
-                onPressed: () => widget.onRemoveOption(option),
-              ),
-            ],
-          ),
-        Padding(
-          padding: const EdgeInsets.all(10.0),
-          child: Row(
             children: [
               Expanded(
                 child: TextField(
@@ -378,8 +377,8 @@ class _OptionEditorBodyState extends State<_OptionEditorBody> {
               ElevatedButton(onPressed: _addOption, child: Text('Add')),
             ],
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
