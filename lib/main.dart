@@ -26,11 +26,15 @@ class MainApp extends StatefulWidget {
 }
 
 class _MainAppState extends State<MainApp> {
+  static const String _lowStockThresholdPrefKey = 'inventory.lowStockThreshold';
+
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   Collections? _collections;
   List<Item>? _filteredItems;
   FilterCriteria? _filterCriteria;
+  String? _loadErrorMessage;
+  int _lowStockThreshold = FilterCriteria.defaultLowStockThreshold;
 
   @override
   void initState() {
@@ -39,34 +43,103 @@ class _MainAppState extends State<MainApp> {
   }
 
   Future<void> _loadCollections() async {
-    final fileMethods = FileMethods();
-    final savedItems = await fileMethods.readItems();
-    final savedTags = await fileMethods.readTags();
-    final savedLocations = await fileMethods.readLocations();
-    final savedStatuses = await fileMethods.readStatuses();
+    try {
+      final fileMethods = FileMethods();
+      final savedItems = await fileMethods.readItems();
+      final savedTags = await fileMethods.readTags();
+      final savedLocations = await fileMethods.readLocations();
+      final savedStatuses = await fileMethods.readStatuses();
+      final prefs = await SharedPreferences.getInstance();
+      final savedLowStockThreshold =
+          prefs.getInt(_lowStockThresholdPrefKey) ??
+          FilterCriteria.defaultLowStockThreshold;
 
-    final loadedLocations = savedLocations.isEmpty
-        ? _defaultLocations()
-        : {...savedLocations, ..._defaultLocations()};
-    final loadedStatuses = savedStatuses.isEmpty
-        ? _defaultStatuses()
-        : {...savedStatuses, ..._defaultStatuses()};
+      final loadedLocations = savedLocations.isEmpty
+          ? _defaultLocations()
+          : {...savedLocations, ..._defaultLocations()};
+      final loadedStatuses = savedStatuses.isEmpty
+          ? _defaultStatuses()
+          : {...savedStatuses, ..._defaultStatuses()};
 
-    final loadedCollections = Collections(
-      savedItems.isEmpty ? _defaultItems() : savedItems,
-      savedTags.isEmpty ? _defaultTags() : savedTags,
-      loadedLocations,
-      loadedStatuses,
-    );
+      final loadedCollections = Collections(
+        savedItems.isEmpty ? _defaultItems() : savedItems,
+        savedTags.isEmpty ? _defaultTags() : savedTags,
+        loadedLocations,
+        loadedStatuses,
+        onPersistenceError: _handlePersistenceError,
+      );
 
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _loadErrorMessage = null;
+        _lowStockThreshold = savedLowStockThreshold > 0
+            ? savedLowStockThreshold
+            : FilterCriteria.defaultLowStockThreshold;
+        _collections = loadedCollections;
+        _applyCurrentFilters();
+      });
+
+      await _showLegacyMigrationNoticeIfNeeded();
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _collections = null;
+        _loadErrorMessage = 'Failed to load inventory data.';
+      });
+    }
+  }
+
+  void _handlePersistenceError(Object error) {
     if (!mounted) {
       return;
     }
 
-    setState(() {
-      _collections = loadedCollections;
-      _applyCurrentFilters();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final currentContext =
+          _scaffoldKey.currentContext ?? _navigatorKey.currentContext;
+      if (currentContext == null) {
+        return;
+      }
+      ScaffoldMessenger.of(currentContext).showSnackBar(
+        const SnackBar(
+          content: Text('Could not save changes. Please try again.'),
+        ),
+      );
     });
+  }
+
+  Future<void> _showLegacyMigrationNoticeIfNeeded() async {
+    final prefs = await SharedPreferences.getInstance();
+    final migrationDetected =
+        prefs.getBool(FileMethods.legacyItemsMigrationDetectedKey) ?? false;
+    final noticeShown =
+        prefs.getBool(FileMethods.legacyItemsMigrationNoticeShownKey) ?? false;
+
+    if (!migrationDetected || noticeShown || !mounted) {
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final currentContext = _scaffoldKey.currentContext;
+      if (currentContext == null) {
+        return;
+      }
+      ScaffoldMessenger.of(currentContext).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Older inventory records were migrated to the latest format.',
+          ),
+        ),
+      );
+    });
+
+    await prefs.setBool(FileMethods.legacyItemsMigrationNoticeShownKey, true);
+    await prefs.setBool(FileMethods.legacyItemsMigrationDetectedKey, false);
   }
 
   Future<void> _openNewItem() async {
@@ -107,13 +180,50 @@ class _MainAppState extends State<MainApp> {
 
   void _onCriteriaChanged(FilterCriteria criteria) {
     setState(() {
-      _filterCriteria = criteria;
+      _filterCriteria = FilterCriteria(
+        status: criteria.status,
+        location: criteria.location,
+        lowStockOnly: criteria.lowStockOnly,
+        lowStockThreshold: _lowStockThreshold,
+        priceRange: criteria.priceRange,
+        tagFilters: criteria.tagFilters,
+      );
+      _applyCurrentFilters();
+    });
+  }
+
+  Future<void> _onLowStockThresholdChanged(int threshold) async {
+    if (threshold <= 0) {
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_lowStockThresholdPrefKey, threshold);
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _lowStockThreshold = threshold;
+      if (_filterCriteria != null) {
+        _filterCriteria = FilterCriteria(
+          status: _filterCriteria!.status,
+          location: _filterCriteria!.location,
+          lowStockOnly: _filterCriteria!.lowStockOnly,
+          lowStockThreshold: threshold,
+          priceRange: _filterCriteria!.priceRange,
+          tagFilters: _filterCriteria!.tagFilters,
+        );
+      }
       _applyCurrentFilters();
     });
   }
 
   void _applyCurrentFilters() {
-    final activeCriteria = _filterCriteria ?? const FilterCriteria();
+    final activeCriteria =
+        _filterCriteria ??
+        FilterCriteria(lowStockThreshold: _lowStockThreshold);
 
     if (_collections == null) {
       _filteredItems = null;
@@ -135,7 +245,23 @@ class _MainAppState extends State<MainApp> {
   Widget build(BuildContext context) {
     if (_collections == null) {
       return MaterialApp(
-        home: Scaffold(body: Center(child: CircularProgressIndicator())),
+        home: Scaffold(
+          body: Center(
+            child: _loadErrorMessage == null
+                ? CircularProgressIndicator()
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(_loadErrorMessage!),
+                      const SizedBox(height: 12),
+                      ElevatedButton(
+                        onPressed: _loadCollections,
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+          ),
+        ),
       );
     }
 
@@ -150,13 +276,17 @@ class _MainAppState extends State<MainApp> {
               filteredItems: _filteredItems,
               onAddPressed: _openNewItem,
               onItemsChanged: _refreshItems,
+              lowStockThreshold: _lowStockThreshold,
+              onLowStockThresholdChanged: _onLowStockThresholdChanged,
               scaffoldKey: _scaffoldKey,
             ),
           ),
         ),
         drawer: Filter(
           c: _collections!,
-          criteria: _filterCriteria ?? const FilterCriteria(),
+          criteria:
+              _filterCriteria ??
+              FilterCriteria(lowStockThreshold: _lowStockThreshold),
           onCriteriaChanged: _onCriteriaChanged,
           onFilterChanged: _onFilterChanged,
         ),
@@ -166,11 +296,11 @@ class _MainAppState extends State<MainApp> {
 }
 
 Set<String> _defaultLocations() {
-  return {'Etsy', 'Home', 'General Store'};
+  return {};
 }
 
 Set<String> _defaultStatuses() {
-  return {'WIP', 'Sold', 'Listed', 'Returned'};
+  return {};
 }
 
 List<Item> _defaultItems() {
@@ -178,55 +308,21 @@ List<Item> _defaultItems() {
 }
 
 Set<Tag> _defaultTags() {
-  return {
-    Tag("Color", {
-      "Red",
-      "Orange",
-      "Yellow",
-      "Green",
-      "Blue",
-      "Purple",
-      "Pink",
-      "Brown",
-      "Black",
-    }),
-    Tag("Size", {
-      "Quail",
-      "Pullet",
-      "Chicken",
-      "Duck",
-      "Goose",
-      "Rhea",
-      "Ostrich",
-    }),
-    Tag("Occasion", {
-      "Baby",
-      "Christmas",
-      "Easter",
-      "Fall",
-      "Spring",
-      "Wedding",
-    }),
-    Tag("Symbols", {"Animal", "Person", "Plants", "Religious", "Star"}),
-    Tag("Division", {
-      "Band",
-      "Circles",
-      "Diagonal Band",
-      "Four Panels",
-      "Star",
-      "Triangles",
-    }),
-  };
+  return {};
 }
 
 class NavBar extends StatelessWidget {
   final VoidCallback onAddPressed;
+  final int lowStockThreshold;
+  final ValueChanged<int> onLowStockThresholdChanged;
   final GlobalKey<ScaffoldState> _scaffoldKey;
   final Collections c;
 
   const NavBar({
     super.key,
     required this.onAddPressed,
+    required this.lowStockThreshold,
+    required this.onLowStockThresholdChanged,
     required this._scaffoldKey,
     required this.c,
   });
@@ -236,19 +332,43 @@ class NavBar extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        IconButton(
-          onPressed: () {
-            _scaffoldKey.currentState?.openDrawer();
-          },
-          icon: Icon(Icons.filter_alt_outlined),
-        ),
-        IconButton(onPressed: onAddPressed, icon: Icon(Icons.add)),
-        IconButton(
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => Menu(c: c)),
+        FocusTraversalOrder(
+          order: const NumericFocusOrder(30),
+          child: IconButton(
+            onPressed: () {
+              _scaffoldKey.currentState?.openDrawer();
+            },
+            tooltip: 'Open filters',
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            icon: Icon(Icons.filter_alt_outlined),
           ),
-          icon: Icon(Icons.menu),
+        ),
+        FocusTraversalOrder(
+          order: const NumericFocusOrder(31),
+          child: IconButton(
+            onPressed: onAddPressed,
+            tooltip: 'Add item',
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            icon: Icon(Icons.add),
+          ),
+        ),
+        FocusTraversalOrder(
+          order: const NumericFocusOrder(32),
+          child: IconButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => Menu(
+                  c: c,
+                  lowStockThreshold: lowStockThreshold,
+                  onLowStockThresholdChanged: onLowStockThresholdChanged,
+                ),
+              ),
+            ),
+            tooltip: 'Open menu',
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            icon: Icon(Icons.menu),
+          ),
         ),
       ],
     );
@@ -260,6 +380,8 @@ class Scroll extends StatefulWidget {
   final List<Item>? filteredItems;
   final VoidCallback onAddPressed;
   final VoidCallback onItemsChanged;
+  final int lowStockThreshold;
+  final ValueChanged<int> onLowStockThresholdChanged;
   final GlobalKey<ScaffoldState> scaffoldKey;
 
   const Scroll({
@@ -268,6 +390,8 @@ class Scroll extends StatefulWidget {
     required this.filteredItems,
     required this.onAddPressed,
     required this.onItemsChanged,
+    required this.lowStockThreshold,
+    required this.onLowStockThresholdChanged,
     required this.scaffoldKey,
   });
 
@@ -327,8 +451,8 @@ class _ScrollState extends State<Scroll> {
         ? baseItems
         : baseItems.where((item) {
             return item.name.toLowerCase().contains(query) ||
-                item.location.toLowerCase().contains(query) ||
-                item.status.toLowerCase().contains(query);
+                (item.location?.toLowerCase().contains(query) ?? false) ||
+                (item.status?.toLowerCase().contains(query) ?? false);
           }).toList();
 
     switch (_sortOption) {
@@ -342,7 +466,9 @@ class _ScrollState extends State<Scroll> {
         filteredBySearch.sort((a, b) => b.price.compareTo(a.price));
         return filteredBySearch;
       case SortOption.statusAsc:
-        filteredBySearch.sort((a, b) => a.status.compareTo(b.status));
+        filteredBySearch.sort(
+          (a, b) => (a.status ?? '').compareTo(b.status ?? ''),
+        );
         return filteredBySearch;
     }
   }
@@ -390,26 +516,90 @@ class _ScrollState extends State<Scroll> {
       emptyStateMessage = 'No items match your search.';
     }
 
-    return Column(
-      children: [
-        const Text(
-          'My Inventory',
-          style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search),
-                    hintText: 'Search name, location, or status',
-                    border: const OutlineInputBorder(),
-                    suffixIcon: hasSearch
-                        ? IconButton(
+    return FocusTraversalGroup(
+      policy: OrderedTraversalPolicy(),
+      child: Column(
+        children: [
+          const Text(
+            'My Inventory',
+            style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: FocusTraversalOrder(
+                    order: const NumericFocusOrder(1),
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.search),
+                        hintText: 'Search name, location, or status',
+                        border: const OutlineInputBorder(),
+                        suffixIcon: hasSearch
+                            ? IconButton(
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() {
+                                    _searchQuery = '';
+                                  });
+                                  unawaited(_persistListPreferences());
+                                },
+                                icon: const Icon(Icons.clear),
+                                tooltip: 'Clear search',
+                                constraints: const BoxConstraints(
+                                  minWidth: 48,
+                                  minHeight: 48,
+                                ),
+                              )
+                            : null,
+                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          _searchQuery = value;
+                        });
+                        unawaited(_persistListPreferences());
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: FocusTraversalOrder(
+              order: const NumericFocusOrder(2),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: SortOption.values.map(_buildSortChip).toList(),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: itemsToDisplay.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.inventory_2_outlined, size: 64),
+                        const SizedBox(height: 8),
+                        Text(emptyStateMessage),
+                        const SizedBox(height: 12),
+                        ElevatedButton.icon(
+                          onPressed: widget.onAddPressed,
+                          icon: const Icon(Icons.add),
+                          label: const Text('Add Item'),
+                        ),
+                        if (hasSearch)
+                          TextButton(
                             onPressed: () {
                               _searchController.clear();
                               setState(() {
@@ -417,90 +607,41 @@ class _ScrollState extends State<Scroll> {
                               });
                               unawaited(_persistListPreferences());
                             },
-                            icon: const Icon(Icons.clear),
-                            tooltip: 'Clear search',
-                          )
-                        : null,
+                            child: const Text('Clear Search'),
+                          ),
+                        if (hasFilters && !hasNoItems)
+                          TextButton(
+                            onPressed: () {
+                              widget.scaffoldKey.currentState?.openDrawer();
+                            },
+                            child: const Text('Adjust Filters'),
+                          ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: itemsToDisplay.length,
+                    itemBuilder: (context, index) {
+                      return ItemRow(
+                        key: ValueKey(itemsToDisplay[index].id),
+                        i: itemsToDisplay[index],
+                        index: index,
+                        collections: widget.collections,
+                        onChanged: widget.onItemsChanged,
+                      );
+                    },
                   ),
-                  onChanged: (value) {
-                    setState(() {
-                      _searchQuery = value;
-                    });
-                    unawaited(_persistListPreferences());
-                  },
-                ),
-              ),
-            ],
           ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: SortOption.values.map(_buildSortChip).toList(),
-            ),
+          const SizedBox(height: 8),
+          NavBar(
+            onAddPressed: widget.onAddPressed,
+            lowStockThreshold: widget.lowStockThreshold,
+            onLowStockThresholdChanged: widget.onLowStockThresholdChanged,
+            scaffoldKey: widget.scaffoldKey,
+            c: widget.collections,
           ),
-        ),
-        const SizedBox(height: 8),
-        Expanded(
-          child: itemsToDisplay.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.inventory_2_outlined, size: 64),
-                      const SizedBox(height: 8),
-                      Text(emptyStateMessage),
-                      const SizedBox(height: 12),
-                      ElevatedButton.icon(
-                        onPressed: widget.onAddPressed,
-                        icon: const Icon(Icons.add),
-                        label: const Text('Add Item'),
-                      ),
-                      if (hasSearch)
-                        TextButton(
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() {
-                              _searchQuery = '';
-                            });
-                            unawaited(_persistListPreferences());
-                          },
-                          child: const Text('Clear Search'),
-                        ),
-                      if (hasFilters && !hasNoItems)
-                        TextButton(
-                          onPressed: () {
-                            widget.scaffoldKey.currentState?.openDrawer();
-                          },
-                          child: const Text('Adjust Filters'),
-                        ),
-                    ],
-                  ),
-                )
-              : ListView.builder(
-                  itemCount: itemsToDisplay.length,
-                  itemBuilder: (context, index) {
-                    return ItemRow(
-                      key: ValueKey(itemsToDisplay[index].id),
-                      i: itemsToDisplay[index],
-                      index: index,
-                      collections: widget.collections,
-                      onChanged: widget.onItemsChanged,
-                    );
-                  },
-                ),
-        ),
-        const SizedBox(height: 8),
-        NavBar(
-          onAddPressed: widget.onAddPressed,
-          scaffoldKey: widget.scaffoldKey,
-          c: widget.collections,
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

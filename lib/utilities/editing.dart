@@ -17,8 +17,9 @@ class _EditingItemState extends State<EditingItem> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
-  late String _location;
-  late String _status;
+  final TextEditingController _quantityController = TextEditingController();
+  String? _location;
+  String? _status;
   late String _imagePath;
   final Map<String, Set<String>> _selectedTagValues = {};
 
@@ -28,12 +29,13 @@ class _EditingItemState extends State<EditingItem> {
     // Initialize controllers and fields from the passed-in item
     _nameController.text = widget.i.name;
     _priceController.text = widget.i.price.toStringAsFixed(2);
+    _quantityController.text = widget.i.quantity.toString();
     _location = widget.i.location;
     _status = widget.i.status;
-    _imagePath = widget.i.img;
+    _imagePath = widget.i.img ?? '';
 
     // Copy existing tag selections from the item
-    widget.i.tags.forEach((tagName, values) {
+    widget.i.tags?.forEach((tagName, values) {
       _selectedTagValues[tagName] = Set<String>.from(values);
     });
   }
@@ -42,10 +44,11 @@ class _EditingItemState extends State<EditingItem> {
   void dispose() {
     _nameController.dispose();
     _priceController.dispose();
+    _quantityController.dispose();
     super.dispose();
   }
 
-  Future<void> _saveItem() async {
+  void _saveItem() {
     if (!mounted) {
       return;
     }
@@ -60,8 +63,10 @@ class _EditingItemState extends State<EditingItem> {
 
     final name = _nameController.text.trim();
     final priceText = _priceController.text.trim();
+    final quantityText = _quantityController.text.trim();
 
     final price = double.tryParse(priceText) ?? 0.00;
+    final quantity = int.tryParse(quantityText) ?? 1;
     final selectedTags = <String, Set<String>>{};
     _selectedTagValues.forEach((tagName, values) {
       if (values.isNotEmpty) {
@@ -73,6 +78,7 @@ class _EditingItemState extends State<EditingItem> {
       widget.i.id,
       name,
       price,
+      quantity,
       _location,
       _status,
       _imagePath,
@@ -80,9 +86,6 @@ class _EditingItemState extends State<EditingItem> {
     );
 
     widget.collections.editItem(updatedItem);
-
-    // Ensure collections are saved to disk before closing
-    await widget.collections.saveToDisk();
 
     if (!mounted) return;
     Navigator.of(context).pop(updatedItem);
@@ -92,13 +95,13 @@ class _EditingItemState extends State<EditingItem> {
   Widget build(BuildContext context) {
     final locationOptions = widget.collections.getAllLocations().toList()
       ..sort();
-    if (!locationOptions.contains(_location)) {
-      locationOptions.insert(0, _location);
+    if (_location != null && !locationOptions.contains(_location)) {
+      locationOptions.insert(0, _location!);
     }
 
     final statusOptions = widget.collections.getAllStatuses().toList()..sort();
-    if (!statusOptions.contains(_status)) {
-      statusOptions.insert(0, _status);
+    if (_status != null && !statusOptions.contains(_status)) {
+      statusOptions.insert(0, _status!);
     }
 
     final sortedTags = widget.collections.tags.toList()
@@ -173,16 +176,32 @@ class _EditingItemState extends State<EditingItem> {
                         return null;
                       },
                     ),
-                    LocationChoice(
-                      options: locationOptions,
-                      value: _location,
-                      onChanged: (value) => setState(() => _location = value),
+                    NewQuantity(
+                      controller: _quantityController,
+                      validator: (value) {
+                        final trimmed = value?.trim() ?? '';
+                        if (trimmed.isEmpty) {
+                          return 'Quantity is required.';
+                        }
+                        final parsed = int.tryParse(trimmed);
+                        if (parsed == null || parsed <= 0) {
+                          return 'Enter a valid positive integer.';
+                        }
+                        return null;
+                      },
                     ),
-                    StatusChoice(
-                      options: statusOptions,
-                      value: _status,
-                      onChanged: (value) => setState(() => _status = value),
-                    ),
+                    if (locationOptions.isNotEmpty)
+                      LocationChoice(
+                        options: locationOptions,
+                        value: _location ?? locationOptions.first,
+                        onChanged: (value) => setState(() => _location = value),
+                      ),
+                    if (statusOptions.isNotEmpty)
+                      StatusChoice(
+                        options: statusOptions,
+                        value: _status ?? statusOptions.first,
+                        onChanged: (value) => setState(() => _status = value),
+                      ),
                     ...tagRows,
                   ],
                 ),

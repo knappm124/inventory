@@ -10,14 +10,17 @@ class MenuItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+      minVerticalPadding: 12,
+      title: Text(name),
+      trailing: const Icon(Icons.chevron_right),
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => Editor(tagName: name, c: c),
         ),
       ),
-      child: Text(name),
     );
   }
 }
@@ -135,6 +138,7 @@ class _EditorState extends State<Editor> {
                 Padding(padding: EdgeInsets.all(10)),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
+                  tooltip: 'Back',
                   icon: Icon(Icons.arrow_back_sharp),
                 ),
                 _OptionEditorBody(
@@ -157,6 +161,7 @@ class _EditorState extends State<Editor> {
                 Padding(padding: EdgeInsets.all(10)),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
+                  tooltip: 'Back',
                   icon: Icon(Icons.arrow_back_sharp),
                 ),
                 _OptionEditorBody(
@@ -177,72 +182,86 @@ class _EditorState extends State<Editor> {
         return Scaffold(
           body: DefaultTextStyle(
             style: TextStyle(color: Colors.black, fontSize: 16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(padding: EdgeInsets.all(10)),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: Icon(Icons.arrow_back_sharp),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text("Tags", style: TextStyle(fontSize: 32.0)),
-                    for (Tag t in tags)
-                      SizedBox(
-                        width: 400,
-                        child: Padding(
-                          padding: EdgeInsets.all(8.0),
-                          child: Row(
-                            children: [
-                              Text(t.getName()),
-                              IconButton(
-                                icon: Icon(Icons.edit),
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => EditTag(
-                                        tag: t.getName(),
-                                        collections: widget.c,
+            child: Padding(
+              padding: EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    tooltip: 'Back',
+                    icon: Icon(Icons.arrow_back_sharp),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Tags", style: TextStyle(fontSize: 32.0)),
+                      for (Tag t in tags)
+                        SizedBox(
+                          width: 400,
+                          child: Padding(
+                            padding: EdgeInsets.all(8.0),
+                            child: Row(
+                              children: [
+                                Text(t.getName()),
+                                IconButton(
+                                  icon: Icon(Icons.edit),
+                                  tooltip: 'Edit tag',
+                                  constraints: const BoxConstraints(
+                                    minWidth: 48,
+                                    minHeight: 48,
+                                  ),
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => EditTag(
+                                          tag: t.getName(),
+                                          collections: widget.c,
+                                        ),
                                       ),
-                                    ),
-                                  );
-                                },
-                              ),
-                              IconButton(
-                                icon: Icon(Icons.delete),
-                                onPressed: () => _removeTag(t.getName()),
-                              ),
-                            ],
+                                    );
+                                  },
+                                ),
+                                IconButton(
+                                  icon: Icon(Icons.delete),
+                                  tooltip: 'Delete tag',
+                                  constraints: const BoxConstraints(
+                                    minWidth: 48,
+                                    minHeight: 48,
+                                  ),
+                                  onPressed: () => _removeTag(t.getName()),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      Container(
+                        width: 300,
+                        padding: const EdgeInsets.all(10),
+                        child: Material(
+                          child: TextFormField(
+                            controller: controller,
+                            validator: widget.validator,
+                            autovalidateMode:
+                                AutovalidateMode.onUserInteraction,
+                            textInputAction: TextInputAction.done,
+                            onFieldSubmitted: (_) => _submitTag(),
+                            decoration: InputDecoration(
+                              labelText: 'Name',
+                              border: OutlineInputBorder(),
+                            ),
                           ),
                         ),
                       ),
-                    Container(
-                      width: 300,
-                      padding: const EdgeInsets.all(10),
-                      child: Material(
-                        child: TextFormField(
-                          controller: controller,
-                          validator: widget.validator,
-                          autovalidateMode: AutovalidateMode.onUserInteraction,
-                          textInputAction: TextInputAction.done,
-                          onFieldSubmitted: (_) => _submitTag(),
-                          decoration: InputDecoration(
-                            labelText: 'Name',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
+                      ElevatedButton(
+                        onPressed: _submitTag,
+                        child: Text("Add Tag"),
                       ),
-                    ),
-                    ElevatedButton(
-                      onPressed: _submitTag,
-                      child: Text("Add Tag"),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -262,10 +281,83 @@ class _EditorState extends State<Editor> {
   }
 }
 
-class Menu extends StatelessWidget {
+class Menu extends StatefulWidget {
   final Collections c;
+  final int lowStockThreshold;
+  final ValueChanged<int> onLowStockThresholdChanged;
 
-  const Menu({super.key, required this.c});
+  const Menu({
+    super.key,
+    required this.c,
+    required this.lowStockThreshold,
+    required this.onLowStockThresholdChanged,
+  });
+
+  @override
+  State<Menu> createState() => _MenuState();
+}
+
+class _MenuState extends State<Menu> {
+  late int _lowStockThreshold;
+
+  @override
+  void initState() {
+    super.initState();
+    _lowStockThreshold = widget.lowStockThreshold;
+  }
+
+  Future<void> _editLowStockThreshold() async {
+    final controller = TextEditingController(
+      text: _lowStockThreshold.toString(),
+    );
+    final result = await showDialog<int>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Low Stock Threshold'),
+          content: TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Threshold',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                final parsed = int.tryParse(controller.text.trim());
+                if (parsed == null || parsed <= 0) {
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    const SnackBar(
+                      content: Text('Enter a valid positive integer.'),
+                    ),
+                  );
+                  return;
+                }
+                Navigator.of(dialogContext).pop(parsed);
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+    controller.dispose();
+
+    if (result == null || result == _lowStockThreshold) {
+      return;
+    }
+
+    setState(() {
+      _lowStockThreshold = result;
+    });
+    widget.onLowStockThresholdChanged(result);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -277,28 +369,52 @@ class Menu extends StatelessWidget {
           Padding(padding: EdgeInsets.all(10)),
           IconButton(
             onPressed: () => Navigator.pop(context),
+            tooltip: 'Back',
             icon: Icon(Icons.arrow_back_sharp),
           ),
           DefaultTextStyle(
             style: TextStyle(color: Colors.black, fontSize: 32.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.max,
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: EdgeInsets.all(10.0),
-                  child: MenuItem(c: c, name: "Locations"),
-                ),
-                Padding(
-                  padding: EdgeInsets.all(10.0),
-                  child: MenuItem(c: c, name: "Status"),
-                ),
-                Padding(
-                  padding: EdgeInsets.all(10.0),
-                  child: MenuItem(c: c, name: "Tags"),
-                ),
-              ],
+            child: FocusTraversalGroup(
+              policy: OrderedTraversalPolicy(),
+              child: Column(
+                mainAxisSize: MainAxisSize.max,
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  FocusTraversalOrder(
+                    order: const NumericFocusOrder(1),
+                    child: Padding(
+                      padding: EdgeInsets.all(10.0),
+                      child: MenuItem(c: widget.c, name: "Locations"),
+                    ),
+                  ),
+                  FocusTraversalOrder(
+                    order: const NumericFocusOrder(2),
+                    child: Padding(
+                      padding: EdgeInsets.all(10.0),
+                      child: MenuItem(c: widget.c, name: "Status"),
+                    ),
+                  ),
+                  FocusTraversalOrder(
+                    order: const NumericFocusOrder(3),
+                    child: Padding(
+                      padding: EdgeInsets.all(10.0),
+                      child: MenuItem(c: widget.c, name: "Tags"),
+                    ),
+                  ),
+                  FocusTraversalOrder(
+                    order: const NumericFocusOrder(4),
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                      minVerticalPadding: 12,
+                      title: const Text('Low Stock Threshold'),
+                      subtitle: Text('Current: $_lowStockThreshold'),
+                      trailing: const Icon(Icons.tune),
+                      onTap: _editLowStockThreshold,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -357,6 +473,11 @@ class _OptionEditorBodyState extends State<_OptionEditorBody> {
                 Text(option),
                 IconButton(
                   icon: Icon(Icons.delete),
+                  tooltip: 'Delete option',
+                  constraints: const BoxConstraints(
+                    minWidth: 48,
+                    minHeight: 48,
+                  ),
                   onPressed: () => widget.onRemoveOption(option),
                 ),
               ],
@@ -367,7 +488,7 @@ class _OptionEditorBodyState extends State<_OptionEditorBody> {
                 child: TextField(
                   controller: _controller,
                   decoration: InputDecoration(
-                    labelText: 'New Option',
+                    labelText: 'Name',
                     border: OutlineInputBorder(),
                   ),
                   onSubmitted: (_) => _addOption(),

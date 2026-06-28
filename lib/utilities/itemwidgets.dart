@@ -31,11 +31,14 @@ class ItemIcons extends StatelessWidget {
               onItemUpdated(updatedItem);
             }
           },
+          tooltip: 'Edit item',
+          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
           icon: Icon(Icons.edit),
         ),
         IconButton(
           onPressed: () async {
             final navigator = Navigator.of(context);
+            final messenger = ScaffoldMessenger.of(context);
             final confirmed = await showDialog<bool>(
               context: context,
               builder: (context) {
@@ -61,9 +64,23 @@ class ItemIcons extends StatelessWidget {
             }
 
             collections.removeItem(i);
-            await collections.saveToDisk();
+            await messenger
+                .showSnackBar(
+                  SnackBar(
+                    content: Text('Deleted "${i.name}"'),
+                    action: SnackBarAction(
+                      label: 'Undo',
+                      onPressed: () {
+                        collections.addItem(i);
+                      },
+                    ),
+                  ),
+                )
+                .closed;
             navigator.pop(true);
           },
+          tooltip: 'Delete item',
+          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
           icon: Icon(Icons.delete),
         ),
       ],
@@ -112,7 +129,7 @@ class ItemRow extends StatelessWidget {
           child: Row(
             children: [
               buildInventoryImage(
-                source: i.img,
+                source: i.img ?? '',
                 width: 100,
                 height: 100,
                 fit: BoxFit.contain,
@@ -125,8 +142,9 @@ class ItemRow extends StatelessWidget {
                   children: [
                     Text("Name: ${i.name}"),
                     Text("Price: ${i.price.toStringAsFixed(2)}"),
-                    Text("Location: ${i.location}"),
-                    Text("Status: ${i.status}"),
+                    Text("Quantity: ${i.quantity}"),
+                    Text("Location: ${i.location ?? 'Not set'}"),
+                    Text("Status: ${i.status ?? 'Not set'}"),
                   ],
                 ),
               ),
@@ -170,9 +188,33 @@ class _EditableItemState extends State<EditableItem> {
     widget.onItemsChanged();
   }
 
+  void _adjustQuantity(int delta) {
+    final nextQuantity = (_item.quantity + delta).clamp(1, 9999999);
+    if (nextQuantity == _item.quantity) {
+      return;
+    }
+
+    final updatedItem = Item(
+      _item.id,
+      _item.name,
+      _item.price,
+      nextQuantity,
+      _item.location,
+      _item.status,
+      _item.img,
+      _item.tags,
+    );
+
+    widget.collections.editItem(updatedItem);
+    setState(() {
+      _item = updatedItem;
+    });
+    widget.onItemsChanged();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final sortedTagNames = _item.tags.keys.toList()..sort();
+    final sortedTagNames = _item.tags!.keys.toList()..sort();
 
     return Scaffold(
       appBar: AppBar(title: Text(_item.name)),
@@ -192,7 +234,7 @@ class _EditableItemState extends State<EditableItem> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       buildInventoryImage(
-                        source: _item.img,
+                        source: _item.img ?? '',
                         width: 250,
                         height: 250,
                         fit: BoxFit.contain,
@@ -206,14 +248,38 @@ class _EditableItemState extends State<EditableItem> {
                   ),
                 ),
                 Text("Price: ${_item.price.toStringAsFixed(2)}"),
-                Text("Location: ${_item.location}"),
-                Text("Status: ${_item.status}"),
+                Row(
+                  children: [
+                    const Text("Quantity: "),
+                    IconButton(
+                      onPressed: () => _adjustQuantity(-1),
+                      tooltip: 'Decrease quantity',
+                      constraints: const BoxConstraints(
+                        minWidth: 48,
+                        minHeight: 48,
+                      ),
+                      icon: const Icon(Icons.remove_circle_outline),
+                    ),
+                    Text("${_item.quantity}"),
+                    IconButton(
+                      onPressed: () => _adjustQuantity(1),
+                      tooltip: 'Increase quantity',
+                      constraints: const BoxConstraints(
+                        minWidth: 48,
+                        minHeight: 48,
+                      ),
+                      icon: const Icon(Icons.add_circle_outline),
+                    ),
+                  ],
+                ),
+                Text("Location: ${_item.location ?? 'Not set'}"),
+                Text("Status: ${_item.status ?? 'Not set'}"),
                 for (String s in sortedTagNames)
                   Row(
                     children: [
                       Text("$s: "),
                       for (String o
-                          in ((_item.tags[s]?.toList() ?? <String>[])..sort()))
+                          in ((_item.tags?[s]?.toList() ?? <String>[])..sort()))
                         Text("$o "),
                     ],
                   ),

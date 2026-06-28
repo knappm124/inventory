@@ -19,8 +19,9 @@ class _NewItemState extends State<NewItem> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
-  late String _location;
-  late String _status;
+  final TextEditingController _quantityController = TextEditingController();
+  late String? _location;
+  late String? _status;
   String _imagePath = '';
   final Map<String, Set<String>> _selectedTagValues = {};
 
@@ -30,26 +31,24 @@ class _NewItemState extends State<NewItem> {
     final locationOptions = widget.collections.getAllLocations().toList();
     final statusOptions = widget.collections.getAllStatuses().toList();
 
-    _location = locationOptions.contains('Home')
-        ? 'Home'
-        : (locationOptions.isNotEmpty ? locationOptions.first : 'Home');
-    _status = statusOptions.contains('WIP')
-        ? 'WIP'
-        : (statusOptions.isNotEmpty ? statusOptions.first : 'WIP');
+    _location = locationOptions.isNotEmpty ? locationOptions.first : null;
+    _status = statusOptions.isNotEmpty ? statusOptions.first : null;
   }
 
   List<String> _locationOptions() {
     final options = widget.collections.getAllLocations().toList()..sort();
-    if (!options.contains(_location)) {
-      options.insert(0, _location);
+    final currentLocation = _location;
+    if (currentLocation != null && !options.contains(currentLocation)) {
+      options.insert(0, currentLocation);
     }
     return options;
   }
 
   List<String> _statusOptions() {
     final options = widget.collections.getAllStatuses().toList()..sort();
-    if (!options.contains(_status)) {
-      options.insert(0, _status);
+    final currentStatus = _status;
+    if (currentStatus != null && !options.contains(currentStatus)) {
+      options.insert(0, currentStatus);
     }
     return options;
   }
@@ -58,6 +57,7 @@ class _NewItemState extends State<NewItem> {
   void dispose() {
     _nameController.dispose();
     _priceController.dispose();
+    _quantityController.dispose();
     super.dispose();
   }
 
@@ -91,6 +91,13 @@ class _NewItemState extends State<NewItem> {
     }
 
     final price = double.tryParse(priceText) ?? 0.0;
+    final quantity = int.tryParse(_quantityController.text.trim()) ?? 1;
+    final selectedLocation = (_location?.trim().isNotEmpty ?? false)
+        ? _location
+        : null;
+    final selectedStatus = (_status?.trim().isNotEmpty ?? false)
+        ? _status
+        : null;
     final selectedTags = <String, Set<String>>{};
     _selectedTagValues.forEach((tagName, values) {
       if (values.isNotEmpty) {
@@ -102,8 +109,9 @@ class _NewItemState extends State<NewItem> {
       DateTime.now().millisecondsSinceEpoch.toString(),
       name,
       price,
-      _location,
-      _status,
+      quantity,
+      selectedLocation,
+      selectedStatus,
       _imagePath,
       selectedTags,
     );
@@ -114,6 +122,8 @@ class _NewItemState extends State<NewItem> {
 
   @override
   Widget build(BuildContext context) {
+    final locationOptions = _locationOptions();
+    final statusOptions = _statusOptions();
     final sortedTags = widget.collections.tags.toList()
       ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
 
@@ -132,72 +142,128 @@ class _NewItemState extends State<NewItem> {
 
     return Scaffold(
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(padding: EdgeInsets.all(10)),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              IconButton(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.arrow_back),
+              FocusTraversalOrder(
+                order: const NumericFocusOrder(0),
+                child: IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  tooltip: 'Back',
+                  constraints: const BoxConstraints(
+                    minWidth: 48,
+                    minHeight: 48,
+                  ),
+                  icon: const Icon(Icons.arrow_back),
+                ),
               ),
-              IconButton(onPressed: _saveItem, icon: const Icon(Icons.save)),
+              FocusTraversalOrder(
+                order: const NumericFocusOrder(7),
+                child: IconButton(
+                  onPressed: _saveItem,
+                  tooltip: 'Save item',
+                  constraints: const BoxConstraints(
+                    minWidth: 48,
+                    minHeight: 48,
+                  ),
+                  icon: const Icon(Icons.save),
+                ),
+              ),
             ],
           ),
           Expanded(
             child: SingleChildScrollView(
               child: Form(
                 key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    NewName(
-                      controller: _nameController,
-                      validator: (value) {
-                        final trimmed = value?.trim() ?? '';
-                        if (trimmed.isEmpty) {
-                          return 'Name is required.';
-                        }
-                        return null;
-                      },
-                    ),
-                    ImageUploaderScreen(
-                      initialImagePath: _imagePath,
-                      onImageSelected: (imagePath) {
-                        setState(() {
-                          _imagePath = imagePath;
-                        });
-                      },
-                    ),
-                    NewPrice(
-                      controller: _priceController,
-                      validator: (value) {
-                        final trimmed = value?.trim() ?? '';
-                        if (trimmed.isEmpty) {
-                          return 'Price is required.';
-                        }
-                        final parsed = double.tryParse(trimmed);
-                        if (parsed == null) {
-                          return 'Enter a valid number.';
-                        }
-                        if (parsed < 0) {
-                          return 'Price cannot be negative.';
-                        }
-                        return null;
-                      },
-                    ),
-                    LocationChoice(
-                      options: _locationOptions(),
-                      value: _location,
-                      onChanged: (value) => setState(() => _location = value),
-                    ),
-                    StatusChoice(
-                      options: _statusOptions(),
-                      value: _status,
-                      onChanged: (value) => setState(() => _status = value),
-                    ),
-                    ...tagRows,
-                  ],
+                child: FocusTraversalGroup(
+                  policy: OrderedTraversalPolicy(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      FocusTraversalOrder(
+                        order: const NumericFocusOrder(1),
+                        child: NewName(
+                          controller: _nameController,
+                          validator: (value) {
+                            final trimmed = value?.trim() ?? '';
+                            if (trimmed.isEmpty) {
+                              return 'Name is required.';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                      ImageUploaderScreen(
+                        initialImagePath: _imagePath,
+                        onImageSelected: (imagePath) {
+                          setState(() {
+                            _imagePath = imagePath;
+                          });
+                        },
+                      ),
+                      FocusTraversalOrder(
+                        order: const NumericFocusOrder(2),
+                        child: NewPrice(
+                          controller: _priceController,
+                          validator: (value) {
+                            final trimmed = value?.trim() ?? '';
+                            if (trimmed.isEmpty) {
+                              return 'Price is required.';
+                            }
+                            final parsed = double.tryParse(trimmed);
+                            if (parsed == null) {
+                              return 'Enter a valid number.';
+                            }
+                            if (parsed < 0) {
+                              return 'Price cannot be negative.';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                      FocusTraversalOrder(
+                        order: const NumericFocusOrder(3),
+                        child: NewQuantity(
+                          controller: _quantityController,
+                          validator: (value) {
+                            final trimmed = value?.trim() ?? '';
+                            if (trimmed.isEmpty) {
+                              return 'Quantity is required.';
+                            }
+                            final parsed = int.tryParse(trimmed);
+                            if (parsed == null || parsed <= 0) {
+                              return 'Enter a valid positive integer.';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                      if (locationOptions.isNotEmpty)
+                        FocusTraversalOrder(
+                          order: const NumericFocusOrder(4),
+                          child: LocationChoice(
+                            options: locationOptions,
+                            value: _location ?? locationOptions.first,
+                            onChanged: (value) =>
+                                setState(() => _location = value),
+                          ),
+                        ),
+                      if (statusOptions.isNotEmpty)
+                        FocusTraversalOrder(
+                          order: const NumericFocusOrder(5),
+                          child: StatusChoice(
+                            options: statusOptions,
+                            value: _status ?? statusOptions.first,
+                            onChanged: (value) =>
+                                setState(() => _status = value),
+                          ),
+                        ),
+                      ...tagRows,
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -267,6 +333,39 @@ class NewPrice extends StatelessWidget {
   }
 }
 
+class NewQuantity extends StatelessWidget {
+  final TextEditingController controller;
+  final String? Function(String?)? validator;
+
+  const NewQuantity({super.key, required this.controller, this.validator});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 300,
+      padding: const EdgeInsets.all(10),
+      child: Material(
+        child: TextFormField(
+          controller: controller,
+          validator: validator,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
+          keyboardType: const TextInputType.numberWithOptions(
+            decimal: true,
+            signed: false,
+          ),
+          inputFormatters: <TextInputFormatter>[
+            FilteringTextInputFormatter.allow(RegExp(r'^[1-9]\d*$')),
+          ],
+          decoration: const InputDecoration(
+            labelText: 'Quantity',
+            border: OutlineInputBorder(),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class LocationChoice extends StatelessWidget {
   final List<String> options;
   final String value;
@@ -287,18 +386,22 @@ class LocationChoice extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.all(10),
-      child: SegmentedButton<String>(
-        showSelectedIcon: false,
-        segments: options
-            .map(
-              (option) =>
-                  ButtonSegment<String>(value: option, label: Text(option)),
-            )
-            .toList(),
-        selected: <String>{safeValue},
-        onSelectionChanged: (Set<String> newSelection) {
-          onChanged(newSelection.first);
-        },
+      child: Semantics(
+        container: true,
+        label: 'Item location',
+        child: SegmentedButton<String>(
+          showSelectedIcon: false,
+          segments: options
+              .map(
+                (option) =>
+                    ButtonSegment<String>(value: option, label: Text(option)),
+              )
+              .toList(),
+          selected: <String>{safeValue},
+          onSelectionChanged: (Set<String> newSelection) {
+            onChanged(newSelection.first);
+          },
+        ),
       ),
     );
   }
@@ -324,18 +427,22 @@ class StatusChoice extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.all(10),
-      child: SegmentedButton<String>(
-        showSelectedIcon: false,
-        segments: options
-            .map(
-              (option) =>
-                  ButtonSegment<String>(value: option, label: Text(option)),
-            )
-            .toList(),
-        selected: <String>{safeValue},
-        onSelectionChanged: (Set<String> newSelection) {
-          onChanged(newSelection.first);
-        },
+      child: Semantics(
+        container: true,
+        label: 'Item status',
+        child: SegmentedButton<String>(
+          showSelectedIcon: false,
+          segments: options
+              .map(
+                (option) =>
+                    ButtonSegment<String>(value: option, label: Text(option)),
+              )
+              .toList(),
+          selected: <String>{safeValue},
+          onSelectionChanged: (Set<String> newSelection) {
+            onChanged(newSelection.first);
+          },
+        ),
       ),
     );
   }

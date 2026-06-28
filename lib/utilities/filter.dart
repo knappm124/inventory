@@ -2,14 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:inventory/utilities/collections.dart';
 
 class FilterCriteria {
+  static const int defaultLowStockThreshold = 5;
+
   final String? status;
   final String? location;
+  final bool lowStockOnly;
+  final int lowStockThreshold;
   final RangeValues? priceRange;
   final Map<String, Set<String>> tagFilters;
 
   const FilterCriteria({
     this.status,
     this.location,
+    this.lowStockOnly = false,
+    this.lowStockThreshold = defaultLowStockThreshold,
     this.priceRange,
     this.tagFilters = const {},
   });
@@ -17,6 +23,7 @@ class FilterCriteria {
   bool get hasActiveFilters {
     return status != null ||
         location != null ||
+        lowStockOnly ||
         priceRange != null ||
         tagFilters.values.any((values) => values.isNotEmpty);
   }
@@ -35,6 +42,7 @@ class FilterCriteria {
       if (location != null) {
         matchLocation = item.hasLocation(location!);
       }
+      final matchLowStock = !lowStockOnly || item.quantity <= lowStockThreshold;
       final matchPrice = item.priceBetween(range.start, range.end);
 
       final matchTags = tagFilters.entries.every((entry) {
@@ -45,7 +53,11 @@ class FilterCriteria {
         );
       });
 
-      return matchStatus && matchLocation && matchPrice && matchTags;
+      return matchStatus &&
+          matchLocation &&
+          matchLowStock &&
+          matchPrice &&
+          matchTags;
     }).toList();
   }
 }
@@ -73,6 +85,8 @@ class _FilterState extends State<Filter> {
   late List<Item> filtered;
   String? status;
   String? location;
+  bool lowStockOnly = false;
+  late int lowStockThreshold;
   Map<String, Set<String>> tagFilters = {};
   late double maxPrice;
   late RangeValues _currentRangeValues;
@@ -83,6 +97,8 @@ class _FilterState extends State<Filter> {
     c = widget.c;
     status = widget.criteria.status;
     location = widget.criteria.location;
+    lowStockOnly = widget.criteria.lowStockOnly;
+    lowStockThreshold = widget.criteria.lowStockThreshold;
     tagFilters = widget.criteria.tagFilters.map(
       (key, value) => MapEntry(key, Set<String>.from(value)),
     );
@@ -123,6 +139,8 @@ class _FilterState extends State<Filter> {
     if (oldWidget.criteria != widget.criteria) {
       status = widget.criteria.status;
       location = widget.criteria.location;
+      lowStockOnly = widget.criteria.lowStockOnly;
+      lowStockThreshold = widget.criteria.lowStockThreshold;
       tagFilters = widget.criteria.tagFilters.map(
         (key, value) => MapEntry(key, Set<String>.from(value)),
       );
@@ -135,12 +153,23 @@ class _FilterState extends State<Filter> {
   }
 
   FilterCriteria _buildCriteria() {
+    final statusOptions = c.getAllStatuses();
+    final locationOptions = c.getAllLocations();
+    final effectiveStatus = status != null && statusOptions.contains(status)
+        ? status
+        : null;
+    final effectiveLocation =
+        location != null && locationOptions.contains(location)
+        ? location
+        : null;
     final isFullPriceRange =
         _currentRangeValues.start <= 0 && _currentRangeValues.end >= maxPrice;
 
     return FilterCriteria(
-      status: status,
-      location: location,
+      status: effectiveStatus,
+      location: effectiveLocation,
+      lowStockOnly: lowStockOnly,
+      lowStockThreshold: lowStockThreshold,
       priceRange: isFullPriceRange ? null : _currentRangeValues,
       tagFilters: tagFilters,
     );
@@ -216,46 +245,73 @@ class _FilterState extends State<Filter> {
                 onPressed: () {
                   Navigator.pop(context);
                 },
+                tooltip: 'Close filters',
                 icon: Icon(Icons.chevron_left),
               ),
             ],
           ),
           Padding(padding: EdgeInsets.all(10)),
-          Text("Status"),
-          SegmentedButton<String>(
-            showSelectedIcon: false,
-            segments: statusOptions
-                .map(
-                  (value) =>
-                      ButtonSegment<String>(value: value, label: Text(value)),
-                )
-                .toList(),
-            emptySelectionAllowed: true,
-            selected: selectedStatus,
-            onSelectionChanged: ((Set<String> newValue) {
+          if (statusOptions.isNotEmpty) ...[
+            Text("Status"),
+            Semantics(
+              container: true,
+              label: 'Filter by status',
+              child: SegmentedButton<String>(
+                showSelectedIcon: false,
+                segments: statusOptions
+                    .map(
+                      (value) => ButtonSegment<String>(
+                        value: value,
+                        label: Text(value),
+                      ),
+                    )
+                    .toList(),
+                emptySelectionAllowed: true,
+                selected: selectedStatus,
+                onSelectionChanged: ((Set<String> newValue) {
+                  setState(() {
+                    status = newValue.firstOrNull;
+                  });
+                  _filterList();
+                }),
+              ),
+            ),
+          ],
+          if (locationOptions.isNotEmpty) ...[
+            Text("Location"),
+            Semantics(
+              container: true,
+              label: 'Filter by location',
+              child: SegmentedButton<String>(
+                showSelectedIcon: false,
+                segments: locationOptions
+                    .map(
+                      (value) => ButtonSegment<String>(
+                        value: value,
+                        label: Text(value),
+                      ),
+                    )
+                    .toList(),
+                emptySelectionAllowed: true,
+                selected: selectedLocation,
+                onSelectionChanged: ((Set<String> newValue) {
+                  setState(() {
+                    location = newValue.firstOrNull;
+                  });
+                  _filterList();
+                }),
+              ),
+            ),
+          ],
+          SwitchListTile(
+            title: Text("Low stock only (<= $lowStockThreshold)"),
+            value: lowStockOnly,
+            onChanged: (value) {
               setState(() {
-                status = newValue.firstOrNull;
+                lowStockOnly = value;
               });
               _filterList();
-            }),
-          ),
-          Text("Location"),
-          SegmentedButton<String>(
-            showSelectedIcon: false,
-            segments: locationOptions
-                .map(
-                  (value) =>
-                      ButtonSegment<String>(value: value, label: Text(value)),
-                )
-                .toList(),
-            emptySelectionAllowed: true,
-            selected: selectedLocation,
-            onSelectionChanged: ((Set<String> newValue) {
-              setState(() {
-                location = newValue.firstOrNull;
-              });
-              _filterList();
-            }),
+            },
           ),
           Text("Price"),
           RangeSlider(

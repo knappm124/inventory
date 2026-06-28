@@ -16,6 +16,10 @@ class FileMethods {
   static const String _tagsWebBackupKey = 'tags_json_backup';
   static const String _locationsWebBackupKey = 'locations_json_backup';
   static const String _statusesWebBackupKey = 'statuses_json_backup';
+  static const String legacyItemsMigrationDetectedKey =
+      'legacy_items_migration_detected';
+  static const String legacyItemsMigrationNoticeShownKey =
+      'legacy_items_migration_notice_shown';
 
   Future<String> get _localPath async {
     if (kIsWeb) {
@@ -149,6 +153,11 @@ class FileMethods {
       if (content.trim().isNotEmpty) {
         final decoded = tryItemsFromJsonString(content);
         if (decoded != null) {
+          if (_hasLegacyItemShape(content)) {
+            await _markLegacyMigrationDetected();
+            _normalizeLegacyQuantitiesToOne(content, decoded);
+            await writeItems(decoded);
+          }
           return decoded;
         }
       }
@@ -157,6 +166,11 @@ class FileMethods {
       if (backupContent.trim().isNotEmpty) {
         final decodedBackup = tryItemsFromJsonString(backupContent);
         if (decodedBackup != null) {
+          if (_hasLegacyItemShape(backupContent)) {
+            await _markLegacyMigrationDetected();
+            _normalizeLegacyQuantitiesToOne(backupContent, decodedBackup);
+            await writeItems(decodedBackup);
+          }
           await prefs.setString(_itemsWebKey, backupContent);
           return decodedBackup;
         }
@@ -178,10 +192,96 @@ class FileMethods {
       if (recoveredFromBackup == null) {
         return <Item>[];
       }
-      return tryItemsFromJsonString(recoveredFromBackup) ?? <Item>[];
+      final decodedBackup = tryItemsFromJsonString(recoveredFromBackup);
+      if (decodedBackup != null && _hasLegacyItemShape(recoveredFromBackup)) {
+        await _markLegacyMigrationDetected();
+        _normalizeLegacyQuantitiesToOne(recoveredFromBackup, decodedBackup);
+        await writeItems(decodedBackup);
+      }
+      return decodedBackup ?? <Item>[];
+    }
+
+    if (_hasLegacyItemShape(recoveredContent)) {
+      await _markLegacyMigrationDetected();
+      _normalizeLegacyQuantitiesToOne(recoveredContent, decoded);
+      await writeItems(decoded);
     }
 
     return decoded;
+  }
+
+  Future<void> _markLegacyMigrationDetected() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(legacyItemsMigrationDetectedKey, true);
+  }
+
+  bool _hasLegacyItemShape(String jsonString) {
+    dynamic decoded;
+    try {
+      decoded = jsonDecode(jsonString);
+    } catch (_) {
+      return false;
+    }
+
+    if (decoded is! List) {
+      return false;
+    }
+
+    for (final entry in decoded) {
+      if (entry is! Map) {
+        continue;
+      }
+
+      final map = Map<String, dynamic>.from(entry);
+      final quantity = map['quantity'];
+      final tags = map['tags'];
+
+      if (quantity == null || quantity is! num) {
+        return true;
+      }
+      if (tags != null && tags is! Map) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  void _normalizeLegacyQuantitiesToOne(String jsonString, List<Item> items) {
+    dynamic decoded;
+    try {
+      decoded = jsonDecode(jsonString);
+    } catch (_) {
+      return;
+    }
+
+    if (decoded is! List) {
+      return;
+    }
+
+    final legacyIds = <String>{};
+    for (final entry in decoded) {
+      if (entry is! Map) {
+        continue;
+      }
+
+      final map = Map<String, dynamic>.from(entry);
+      final id = map['id'];
+      final quantity = map['quantity'];
+      if (id is String && (quantity == null || quantity is! num)) {
+        legacyIds.add(id);
+      }
+    }
+
+    if (legacyIds.isEmpty) {
+      return;
+    }
+
+    for (final item in items) {
+      if (legacyIds.contains(item.id)) {
+        item.setQuantity(1);
+      }
+    }
   }
 
   Future<Set<Tag>> readTags() async {
@@ -440,9 +540,16 @@ class Collections {
   Set<Tag> tags;
   Set<String> locations;
   Set<String> status;
+  final void Function(Object error)? onPersistenceError;
   double maxPrice = 0;
 
-  Collections(this.items, this.tags, this.locations, this.status) {
+  Collections(
+    this.items,
+    this.tags,
+    this.locations,
+    this.status, {
+    this.onPersistenceError,
+  }) {
     _recalculateMaxPrice();
   }
 
@@ -468,6 +575,7 @@ class Collections {
       saveToDisk().catchError((error, stackTrace) {
         debugPrint('Failed to persist collections: $error');
         debugPrintStack(stackTrace: stackTrace);
+        onPersistenceError?.call(error);
       }),
     );
   }
@@ -671,66 +779,80 @@ class Collections {
 }
 
 class Item {
-  String id;
-  String name;
-  double price;
-  String location;
-  String status;
-  String img;
-  Map<String, Set<String>> tags;
+  String _id;
+  String _name;
+  double _price;
+  int _quantity;
+  String? _location;
+  String? _status;
+  String? _img;
+  Map<String, Set<String>>? _tags;
 
   Item(
-    this.id,
-    this.name,
-    this.price,
-    this.location,
-    this.status,
-    this.img,
-    this.tags,
+    this._id,
+    this._name,
+    this._price,
+    this._quantity,
+    this._location,
+    this._status,
+    this._img,
+    this._tags,
   );
 
   Map<String, dynamic> toJson() {
-    final sortedTagKeys = tags.keys.toList()..sort();
+    final sortedTagKeys = _tags?.keys.toList() ?? [];
+    sortedTagKeys.sort();
     final normalizedTags = <String, List<String>>{};
     for (final key in sortedTagKeys) {
-      final sortedValues = (tags[key]?.toList() ?? <String>[])..sort();
+      final sortedValues = (_tags?[key]?.toList() ?? <String>[])..sort();
       normalizedTags[key] = sortedValues;
     }
 
     return {
-      'id': id,
-      'name': name,
-      'price': price,
-      'location': location,
-      'status': status,
-      'img': img,
+      'id': _id,
+      'name': _name,
+      'price': _price,
+      'quantity': _quantity,
+      'location': _location,
+      'status': _status,
+      'img': _img,
       'tags': normalizedTags,
     };
   }
 
   factory Item.fromJson(Map<String, dynamic> json) {
+    final rawTags = json['tags'];
+    final tags = rawTags is Map<String, dynamic>
+        ? rawTags.map(
+            (key, value) => MapEntry(
+              key,
+              Set<String>.from(
+                (value as List).map((entry) => entry.toString()),
+              ),
+            ),
+          )
+        : <String, Set<String>>{};
+
     return Item(
       json['id'] as String,
       json['name'] as String,
       (json['price'] as num).toDouble(),
-      json['location'] as String,
-      json['status'] as String,
-      json['img'] as String,
-      (json['tags'] as Map<String, dynamic>).map(
-        (key, value) => MapEntry(
-          key,
-          Set<String>.from((value as List).map((entry) => entry.toString())),
-        ),
-      ),
+      (json['quantity'] is num)
+          ? (json['quantity'] as num).toInt()
+          : int.tryParse(json['quantity']?.toString() ?? '') ?? 1,
+      json['location'] as String?,
+      json['status'] as String?,
+      json['img'] as String?,
+      tags,
     );
   }
 
   bool priceBetween(double min, double max) {
-    return price >= min && price <= max;
+    return _price >= min && _price <= max;
   }
 
   bool containsOption(String name, String option) {
-    final values = tags[name];
+    final values = _tags?[name];
     if (values == null) {
       return false;
     }
@@ -738,15 +860,52 @@ class Item {
   }
 
   bool containsTag(String name) {
-    return tags.containsKey(name);
+    return _tags?.containsKey(name) ?? false;
   }
 
   bool hasStatus(String status) {
-    return (status == this.status);
+    return (status == _status);
   }
 
   bool hasLocation(String location) {
-    return (this.location == location);
+    return (location == _location);
+  }
+
+  String get id => _id;
+  String get name => _name;
+  double get price => _price;
+  int get quantity => _quantity;
+  String? get location => _location;
+  String? get status => _status;
+  String? get img => _img;
+  Map<String, Set<String>>? get tags => _tags;
+
+  void setName(String name) {
+    _name = name;
+  }
+
+  void setPrice(double price) {
+    _price = price;
+  }
+
+  void setQuantity(int quantity) {
+    _quantity = quantity;
+  }
+
+  void setLocation(String? location) {
+    _location = location;
+  }
+
+  void setStatus(String? status) {
+    _status = status;
+  }
+
+  void setImg(String? img) {
+    _img = img;
+  }
+
+  void setTags(Map<String, Set<String>>? tags) {
+    _tags = tags;
   }
 }
 
