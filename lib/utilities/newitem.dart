@@ -141,134 +141,175 @@ class _NewItemState extends State<NewItem> {
     }).toList();
 
     return Scaffold(
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(padding: EdgeInsets.all(10)),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              FocusTraversalOrder(
-                order: const NumericFocusOrder(0),
-                child: IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  tooltip: 'Back',
-                  constraints: const BoxConstraints(
-                    minWidth: 48,
-                    minHeight: 48,
-                  ),
-                  icon: const Icon(Icons.arrow_back),
-                ),
-              ),
-              FocusTraversalOrder(
-                order: const NumericFocusOrder(7),
-                child: IconButton(
-                  onPressed: _saveItem,
-                  tooltip: 'Save item',
-                  constraints: const BoxConstraints(
-                    minWidth: 48,
-                    minHeight: 48,
-                  ),
-                  icon: const Icon(Icons.save),
-                ),
-              ),
-            ],
+      appBar: AppBar(
+        title: const Text('Add Item'),
+        actions: [
+          IconButton(
+            onPressed: _saveItem,
+            tooltip: 'Save item',
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            icon: const Icon(Icons.check),
           ),
-          Expanded(
-            child: SingleChildScrollView(
-              child: Form(
-                key: _formKey,
-                child: FocusTraversalGroup(
-                  policy: OrderedTraversalPolicy(),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      FocusTraversalOrder(
-                        order: const NumericFocusOrder(1),
-                        child: NewName(
-                          controller: _nameController,
-                          validator: (value) {
-                            final trimmed = value?.trim() ?? '';
-                            if (trimmed.isEmpty) {
-                              return 'Name is required.';
-                            }
-                            return null;
+          const SizedBox(width: 4),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 760),
+            child: Form(
+              key: _formKey,
+              child: FocusTraversalGroup(
+                policy: OrderedTraversalPolicy(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                              child: Text(
+                                'Basic Info',
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                            ),
+                            FocusTraversalOrder(
+                              order: const NumericFocusOrder(1),
+                              child: NewName(
+                                controller: _nameController,
+                                validator: (value) {
+                                  final trimmed = value?.trim() ?? '';
+                                  if (trimmed.isEmpty) {
+                                    return 'Name is required.';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                            FocusTraversalOrder(
+                              order: const NumericFocusOrder(2),
+                              child: NewPrice(
+                                controller: _priceController,
+                                validator: (value) {
+                                  final trimmed = value?.trim() ?? '';
+                                  if (trimmed.isEmpty) {
+                                    return 'Price is required.';
+                                  }
+                                  final parsed = double.tryParse(trimmed);
+                                  if (parsed == null) {
+                                    return 'Enter a valid number.';
+                                  }
+                                  if (parsed < 0) {
+                                    return 'Price cannot be negative.';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                            FocusTraversalOrder(
+                              order: const NumericFocusOrder(3),
+                              child: NewQuantity(
+                                controller: _quantityController,
+                                validator: (value) {
+                                  final trimmed = value?.trim() ?? '';
+                                  if (trimmed.isEmpty) {
+                                    return 'Quantity is required.';
+                                  }
+                                  final parsed = int.tryParse(trimmed);
+                                  if (parsed == null || parsed <= 0) {
+                                    return 'Enter a valid positive integer.';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: ImageUploaderScreen(
+                          initialImagePath: _imagePath,
+                          onImageSelected: (imagePath) {
+                            setState(() {
+                              _imagePath = imagePath;
+                            });
                           },
                         ),
                       ),
-                      ImageUploaderScreen(
-                        initialImagePath: _imagePath,
-                        onImageSelected: (imagePath) {
-                          setState(() {
-                            _imagePath = imagePath;
-                          });
-                        },
-                      ),
-                      FocusTraversalOrder(
-                        order: const NumericFocusOrder(2),
-                        child: NewPrice(
-                          controller: _priceController,
-                          validator: (value) {
-                            final trimmed = value?.trim() ?? '';
-                            if (trimmed.isEmpty) {
-                              return 'Price is required.';
-                            }
-                            final parsed = double.tryParse(trimmed);
-                            if (parsed == null) {
-                              return 'Enter a valid number.';
-                            }
-                            if (parsed < 0) {
-                              return 'Price cannot be negative.';
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-                      FocusTraversalOrder(
-                        order: const NumericFocusOrder(3),
-                        child: NewQuantity(
-                          controller: _quantityController,
-                          validator: (value) {
-                            final trimmed = value?.trim() ?? '';
-                            if (trimmed.isEmpty) {
-                              return 'Quantity is required.';
-                            }
-                            final parsed = int.tryParse(trimmed);
-                            if (parsed == null || parsed <= 0) {
-                              return 'Enter a valid positive integer.';
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-                      if (locationOptions.isNotEmpty)
-                        FocusTraversalOrder(
-                          order: const NumericFocusOrder(4),
-                          child: LocationChoice(
-                            options: locationOptions,
-                            value: _location ?? locationOptions.first,
-                            onChanged: (value) =>
-                                setState(() => _location = value),
+                    ),
+                    if (locationOptions.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: FocusTraversalOrder(
+                            order: const NumericFocusOrder(4),
+                            child: LocationChoice(
+                              options: locationOptions,
+                              value: _location ?? locationOptions.first,
+                              onChanged: (value) =>
+                                  setState(() => _location = value),
+                            ),
                           ),
                         ),
-                      if (statusOptions.isNotEmpty)
-                        FocusTraversalOrder(
-                          order: const NumericFocusOrder(5),
-                          child: StatusChoice(
-                            options: statusOptions,
-                            value: _status ?? statusOptions.first,
-                            onChanged: (value) =>
-                                setState(() => _status = value),
-                          ),
-                        ),
-                      ...tagRows,
+                      ),
                     ],
-                  ),
+                    if (statusOptions.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: FocusTraversalOrder(
+                            order: const NumericFocusOrder(5),
+                            child: StatusChoice(
+                              options: statusOptions,
+                              value: _status ?? statusOptions.first,
+                              onChanged: (value) =>
+                                  setState(() => _status = value),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (tagRows.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
+                                child: Text(
+                                  'Tags',
+                                  style: Theme.of(context).textTheme.titleMedium,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              ...tagRows,
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -282,19 +323,13 @@ class NewName extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 300,
-      padding: const EdgeInsets.all(10),
-      child: Material(
-        child: TextFormField(
-          controller: controller,
-          validator: validator,
-          autovalidateMode: AutovalidateMode.onUserInteraction,
-          decoration: InputDecoration(
-            labelText: 'Name',
-            border: OutlineInputBorder(),
-          ),
-        ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: TextFormField(
+        controller: controller,
+        validator: validator,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
+        decoration: const InputDecoration(labelText: 'Name'),
       ),
     );
   }
@@ -308,26 +343,20 @@ class NewPrice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 300,
-      padding: const EdgeInsets.all(10),
-      child: Material(
-        child: TextFormField(
-          controller: controller,
-          validator: validator,
-          autovalidateMode: AutovalidateMode.onUserInteraction,
-          keyboardType: const TextInputType.numberWithOptions(
-            decimal: true,
-            signed: false,
-          ),
-          inputFormatters: <TextInputFormatter>[
-            FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-          ],
-          decoration: const InputDecoration(
-            labelText: 'Price',
-            border: OutlineInputBorder(),
-          ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: TextFormField(
+        controller: controller,
+        validator: validator,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
+        keyboardType: const TextInputType.numberWithOptions(
+          decimal: true,
+          signed: false,
         ),
+        inputFormatters: <TextInputFormatter>[
+          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+        ],
+        decoration: const InputDecoration(labelText: 'Price'),
       ),
     );
   }
@@ -341,26 +370,20 @@ class NewQuantity extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 300,
-      padding: const EdgeInsets.all(10),
-      child: Material(
-        child: TextFormField(
-          controller: controller,
-          validator: validator,
-          autovalidateMode: AutovalidateMode.onUserInteraction,
-          keyboardType: const TextInputType.numberWithOptions(
-            decimal: true,
-            signed: false,
-          ),
-          inputFormatters: <TextInputFormatter>[
-            FilteringTextInputFormatter.allow(RegExp(r'^[1-9]\d*$')),
-          ],
-          decoration: const InputDecoration(
-            labelText: 'Quantity',
-            border: OutlineInputBorder(),
-          ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: TextFormField(
+        controller: controller,
+        validator: validator,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
+        keyboardType: const TextInputType.numberWithOptions(
+          decimal: true,
+          signed: false,
         ),
+        inputFormatters: <TextInputFormatter>[
+          FilteringTextInputFormatter.allow(RegExp(r'^[1-9]\d*$')),
+        ],
+        decoration: const InputDecoration(labelText: 'Quantity'),
       ),
     );
   }
@@ -385,22 +408,34 @@ class LocationChoice extends StatelessWidget {
         : (options.isNotEmpty ? options.first : value);
 
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
       child: Semantics(
         container: true,
         label: 'Item location',
-        child: SegmentedButton<String>(
-          showSelectedIcon: false,
-          segments: options
-              .map(
-                (option) =>
-                    ButtonSegment<String>(value: option, label: Text(option)),
-              )
-              .toList(),
-          selected: <String>{safeValue},
-          onSelectionChanged: (Set<String> newSelection) {
-            onChanged(newSelection.first);
-          },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Location', style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SegmentedButton<String>(
+                showSelectedIcon: false,
+                segments: options
+                    .map(
+                      (option) => ButtonSegment<String>(
+                        value: option,
+                        label: Text(option),
+                      ),
+                    )
+                    .toList(),
+                selected: <String>{safeValue},
+                onSelectionChanged: (Set<String> newSelection) {
+                  onChanged(newSelection.first);
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -426,22 +461,34 @@ class StatusChoice extends StatelessWidget {
         : (options.isNotEmpty ? options.first : value);
 
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
       child: Semantics(
         container: true,
         label: 'Item status',
-        child: SegmentedButton<String>(
-          showSelectedIcon: false,
-          segments: options
-              .map(
-                (option) =>
-                    ButtonSegment<String>(value: option, label: Text(option)),
-              )
-              .toList(),
-          selected: <String>{safeValue},
-          onSelectionChanged: (Set<String> newSelection) {
-            onChanged(newSelection.first);
-          },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Status', style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SegmentedButton<String>(
+                showSelectedIcon: false,
+                segments: options
+                    .map(
+                      (option) => ButtonSegment<String>(
+                        value: option,
+                        label: Text(option),
+                      ),
+                    )
+                    .toList(),
+                selected: <String>{safeValue},
+                onSelectionChanged: (Set<String> newSelection) {
+                  onChanged(newSelection.first);
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -607,42 +654,47 @@ class _ImageUploaderScreenState extends State<ImageUploaderScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 250,
-            height: 250,
-            decoration: BoxDecoration(
-              color: Colors.grey[300],
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey[400]!),
-            ),
-            child: _savedImageBytes != null && _savedImageBytes!.isNotEmpty
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(11),
-                    child: Image.memory(_savedImageBytes!, fit: BoxFit.cover),
-                  )
-                : const Icon(
-                    Icons.image_not_supported,
-                    size: 80,
-                    color: Colors.grey,
-                  ),
+    final theme = Theme.of(context);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final previewSize =
+            (constraints.maxWidth - 48).clamp(180, 320).toDouble();
+
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: previewSize,
+                height: previewSize,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: theme.colorScheme.outlineVariant),
+                ),
+                child: _savedImageBytes != null && _savedImageBytes!.isNotEmpty
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(11),
+                        child: Image.memory(_savedImageBytes!, fit: BoxFit.cover),
+                      )
+                    : Icon(
+                        Icons.image_outlined,
+                        size: 72,
+                        color: theme.colorScheme.outline,
+                      ),
+              ),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: _pickAndSaveImage,
+                icon: const Icon(Icons.upload_file),
+                label: const Text('Upload Image'),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: _pickAndSaveImage,
-            icon: const Icon(Icons.upload_file),
-            label: const Text('Upload Image'),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              textStyle: const TextStyle(fontSize: 16),
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

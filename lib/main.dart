@@ -9,6 +9,65 @@ import 'utilities/itemwidgets.dart';
 import 'utilities/filter.dart';
 import 'utilities/menu.dart';
 
+ThemeData buildAppTheme() {
+  final colorScheme = ColorScheme.fromSeed(
+    seedColor: const Color(0xFF0E7490),
+    brightness: Brightness.light,
+  );
+
+  return ThemeData(
+    useMaterial3: true,
+    colorScheme: colorScheme,
+    scaffoldBackgroundColor: colorScheme.surface,
+    appBarTheme: AppBarTheme(
+      centerTitle: false,
+      elevation: 0,
+      backgroundColor: colorScheme.surface,
+      surfaceTintColor: Colors.transparent,
+      titleTextStyle: TextStyle(
+        color: colorScheme.onSurface,
+        fontSize: 24,
+        fontWeight: FontWeight.w700,
+      ),
+    ),
+    cardTheme: CardThemeData(
+      elevation: 1,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: colorScheme.outlineVariant),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: colorScheme.primary, width: 1.5),
+      ),
+    ),
+    chipTheme: ChipThemeData(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+      side: BorderSide(color: colorScheme.outlineVariant),
+      selectedColor: colorScheme.primaryContainer,
+      checkmarkColor: colorScheme.onPrimaryContainer,
+      labelStyle: TextStyle(color: colorScheme.onSurface),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+    ),
+    floatingActionButtonTheme: FloatingActionButtonThemeData(
+      backgroundColor: colorScheme.primary,
+      foregroundColor: colorScheme.onPrimary,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    ),
+    snackBarTheme: SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ),
+  );
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   if (!kIsWeb) {
@@ -245,7 +304,9 @@ class _MainAppState extends State<MainApp> {
   Widget build(BuildContext context) {
     if (_collections == null) {
       return MaterialApp(
+        theme: buildAppTheme(),
         home: Scaffold(
+          appBar: AppBar(title: const Text('My Inventory')),
           body: Center(
             child: _loadErrorMessage == null
                 ? CircularProgressIndicator()
@@ -266,21 +327,52 @@ class _MainAppState extends State<MainApp> {
     }
 
     return MaterialApp(
+      theme: buildAppTheme(),
       navigatorKey: _navigatorKey,
       home: Scaffold(
         key: _scaffoldKey,
-        body: SafeArea(
-          child: Center(
-            child: Scroll(
-              collections: _collections!,
-              filteredItems: _filteredItems,
-              onAddPressed: _openNewItem,
-              onItemsChanged: _refreshItems,
-              lowStockThreshold: _lowStockThreshold,
-              onLowStockThresholdChanged: _onLowStockThresholdChanged,
-              scaffoldKey: _scaffoldKey,
+        appBar: AppBar(
+          title: const Text('My Inventory'),
+          actions: [
+            IconButton(
+              onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+              tooltip: 'Open filters',
+              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+              icon: const Icon(Icons.filter_alt_outlined),
             ),
+            IconButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => Menu(
+                    c: _collections!,
+                    lowStockThreshold: _lowStockThreshold,
+                    onLowStockThresholdChanged: _onLowStockThresholdChanged,
+                  ),
+                ),
+              ),
+              tooltip: 'Open menu',
+              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+              icon: const Icon(Icons.tune),
+            ),
+            const SizedBox(width: 4),
+          ],
+        ),
+        body: SafeArea(
+          child: Scroll(
+            collections: _collections!,
+            filteredItems: _filteredItems,
+            onAddPressed: _openNewItem,
+            onItemsChanged: _refreshItems,
+            lowStockThreshold: _lowStockThreshold,
+            onLowStockThresholdChanged: _onLowStockThresholdChanged,
+            scaffoldKey: _scaffoldKey,
           ),
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: _openNewItem,
+          icon: const Icon(Icons.add),
+          label: const Text('Add Item'),
         ),
         drawer: Filter(
           c: _collections!,
@@ -309,70 +401,6 @@ List<Item> _defaultItems() {
 
 Set<Tag> _defaultTags() {
   return {};
-}
-
-class NavBar extends StatelessWidget {
-  final VoidCallback onAddPressed;
-  final int lowStockThreshold;
-  final ValueChanged<int> onLowStockThresholdChanged;
-  final GlobalKey<ScaffoldState> _scaffoldKey;
-  final Collections c;
-
-  const NavBar({
-    super.key,
-    required this.onAddPressed,
-    required this.lowStockThreshold,
-    required this.onLowStockThresholdChanged,
-    required this._scaffoldKey,
-    required this.c,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        FocusTraversalOrder(
-          order: const NumericFocusOrder(30),
-          child: IconButton(
-            onPressed: () {
-              _scaffoldKey.currentState?.openDrawer();
-            },
-            tooltip: 'Open filters',
-            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-            icon: Icon(Icons.filter_alt_outlined),
-          ),
-        ),
-        FocusTraversalOrder(
-          order: const NumericFocusOrder(31),
-          child: IconButton(
-            onPressed: onAddPressed,
-            tooltip: 'Add item',
-            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-            icon: Icon(Icons.add),
-          ),
-        ),
-        FocusTraversalOrder(
-          order: const NumericFocusOrder(32),
-          child: IconButton(
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => Menu(
-                  c: c,
-                  lowStockThreshold: lowStockThreshold,
-                  onLowStockThresholdChanged: onLowStockThresholdChanged,
-                ),
-              ),
-            ),
-            tooltip: 'Open menu',
-            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-            icon: Icon(Icons.menu),
-          ),
-        ),
-      ],
-    );
-  }
 }
 
 class Scroll extends StatefulWidget {
@@ -424,14 +452,23 @@ class _ScrollState extends State<Scroll> {
   Future<void> _restoreListPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     final savedSearch = prefs.getString(_searchPrefKey) ?? '';
+    final savedSortIndex = prefs.getInt(_sortPrefKey);
 
     if (!mounted) {
       return;
     }
 
+    final savedSort =
+        savedSortIndex != null &&
+            savedSortIndex >= 0 &&
+            savedSortIndex < SortOption.values.length
+        ? SortOption.values[savedSortIndex]
+        : SortOption.nameAsc;
+
     setState(() {
       _searchQuery = savedSearch;
       _searchController.text = savedSearch;
+      _sortOption = savedSort;
     });
   }
 
@@ -520,13 +557,8 @@ class _ScrollState extends State<Scroll> {
       policy: OrderedTraversalPolicy(),
       child: Column(
         children: [
-          const Text(
-            'My Inventory',
-            style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
             child: Row(
               children: [
                 Expanded(
@@ -582,7 +614,6 @@ class _ScrollState extends State<Scroll> {
               ),
             ),
           ),
-          const SizedBox(height: 8),
           Expanded(
             child: itemsToDisplay.isEmpty
                 ? Center(
@@ -631,14 +662,6 @@ class _ScrollState extends State<Scroll> {
                       );
                     },
                   ),
-          ),
-          const SizedBox(height: 8),
-          NavBar(
-            onAddPressed: widget.onAddPressed,
-            lowStockThreshold: widget.lowStockThreshold,
-            onLowStockThresholdChanged: widget.onLowStockThresholdChanged,
-            scaffoldKey: widget.scaffoldKey,
-            c: widget.collections,
           ),
         ],
       ),

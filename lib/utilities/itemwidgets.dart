@@ -104,11 +104,12 @@ class ItemRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey, width: 1.0),
-      ),
+    final theme = Theme.of(context);
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: InkWell(
+        borderRadius: BorderRadius.circular(14),
         onTap: () async {
           final result = await Navigator.push<bool>(
             context,
@@ -125,26 +126,46 @@ class ItemRow extends StatelessWidget {
           }
         },
         child: Padding(
-          padding: const EdgeInsets.all(8.0),
+          padding: const EdgeInsets.all(12),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              buildInventoryImage(
-                source: i.img ?? '',
-                width: 100,
-                height: 100,
-                fit: BoxFit.contain,
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: ColoredBox(
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  child: buildInventoryImage(
+                    source: i.img ?? '',
+                    width: 86,
+                    height: 86,
+                    fit: BoxFit.cover,
+                  ),
+                ),
               ),
-              Padding(
-                padding: const EdgeInsets.all(10),
+              const SizedBox(width: 12),
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    Text("Name: ${i.name}"),
-                    Text("Price: ${i.price.toStringAsFixed(2)}"),
-                    Text("Quantity: ${i.quantity}"),
-                    Text("Location: ${i.location ?? 'Not set'}"),
-                    Text("Status: ${i.status ?? 'Not set'}"),
+                    Text(
+                      i.name,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        Chip(label: Text('\$${i.price.toStringAsFixed(2)}')),
+                        Chip(label: Text('Qty ${i.quantity}')),
+                        Chip(label: Text(i.location ?? 'No location')),
+                        Chip(label: Text(i.status ?? 'No status')),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -214,79 +235,172 @@ class _EditableItemState extends State<EditableItem> {
 
   @override
   Widget build(BuildContext context) {
-    final sortedTagNames = _item.tags!.keys.toList()..sort();
+    final sortedTagNames = (_item.tags?.keys.toList() ?? <String>[])..sort();
+    final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(title: Text(_item.name)),
-      body: SingleChildScrollView(
-        child: DefaultTextStyle(
-          style: TextStyle(color: Colors.black, fontSize: 16.0),
-          child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              spacing: 10,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: 400,
-                  height: 250,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      buildInventoryImage(
-                        source: _item.img ?? '',
-                        width: 250,
-                        height: 250,
-                        fit: BoxFit.contain,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth >= 760;
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 960),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Flex(
+                      direction: isWide ? Axis.horizontal : Axis.vertical,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: isWide ? 2 : 0,
+                          child: Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Center(
+                                child: buildInventoryImage(
+                                  source: _item.img ?? '',
+                                  width: isWide ? 360 : 280,
+                                  height: 220,
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          width: isWide ? 12 : 0,
+                          height: isWide ? 0 : 12,
+                        ),
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: EditableItemHeader(
+                              i: _item,
+                              collections: widget.collections,
+                              onItemUpdated: _handleItemUpdated,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Inventory Details',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                Chip(
+                                  label: Text(
+                                    '\$${_item.price.toStringAsFixed(2)}',
+                                  ),
+                                ),
+                                Chip(
+                                  label: Text(_item.location ?? 'No location'),
+                                ),
+                                Chip(label: Text(_item.status ?? 'No status')),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                const Text('Quantity'),
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  onPressed: () => _adjustQuantity(-1),
+                                  tooltip: 'Decrease quantity',
+                                  constraints: const BoxConstraints(
+                                    minWidth: 48,
+                                    minHeight: 48,
+                                  ),
+                                  icon: const Icon(Icons.remove_circle_outline),
+                                ),
+                                Text(
+                                  '${_item.quantity}',
+                                  style: theme.textTheme.titleMedium,
+                                ),
+                                IconButton(
+                                  onPressed: () => _adjustQuantity(1),
+                                  tooltip: 'Increase quantity',
+                                  constraints: const BoxConstraints(
+                                    minWidth: 48,
+                                    minHeight: 48,
+                                  ),
+                                  icon: const Icon(Icons.add_circle_outline),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                      EditableItemHeader(
-                        i: _item,
-                        collections: widget.collections,
-                        onItemUpdated: _handleItemUpdated,
+                    ),
+                    if (sortedTagNames.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Tags',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              for (final s in sortedTagNames)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 10),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        s,
+                                        style: theme.textTheme.labelLarge,
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Wrap(
+                                        spacing: 8,
+                                        runSpacing: 8,
+                                        children: [
+                                          for (final o
+                                              in ((_item.tags?[s]?.toList() ??
+                                                    <String>[])..sort()))
+                                            Chip(label: Text(o)),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
                       ),
                     ],
-                  ),
-                ),
-                Text("Price: ${_item.price.toStringAsFixed(2)}"),
-                Row(
-                  children: [
-                    const Text("Quantity: "),
-                    IconButton(
-                      onPressed: () => _adjustQuantity(-1),
-                      tooltip: 'Decrease quantity',
-                      constraints: const BoxConstraints(
-                        minWidth: 48,
-                        minHeight: 48,
-                      ),
-                      icon: const Icon(Icons.remove_circle_outline),
-                    ),
-                    Text("${_item.quantity}"),
-                    IconButton(
-                      onPressed: () => _adjustQuantity(1),
-                      tooltip: 'Increase quantity',
-                      constraints: const BoxConstraints(
-                        minWidth: 48,
-                        minHeight: 48,
-                      ),
-                      icon: const Icon(Icons.add_circle_outline),
-                    ),
                   ],
                 ),
-                Text("Location: ${_item.location ?? 'Not set'}"),
-                Text("Status: ${_item.status ?? 'Not set'}"),
-                for (String s in sortedTagNames)
-                  Row(
-                    children: [
-                      Text("$s: "),
-                      for (String o
-                          in ((_item.tags?[s]?.toList() ?? <String>[])..sort()))
-                        Text("$o "),
-                    ],
-                  ),
-              ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
@@ -306,19 +420,15 @@ class EditableItemHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 100,
-      height: 400,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ItemIcons(
-            i: i,
-            collections: collections,
-            onItemUpdated: onItemUpdated,
-          ),
-        ],
-      ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ItemIcons(
+          i: i,
+          collections: collections,
+          onItemUpdated: onItemUpdated,
+        ),
+      ],
     );
   }
 }
