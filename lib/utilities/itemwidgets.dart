@@ -93,6 +93,7 @@ class ItemRow extends StatelessWidget {
   final int index;
   final Collections collections;
   final VoidCallback onChanged;
+  final int lowStockThreshold;
 
   const ItemRow({
     super.key,
@@ -100,11 +101,13 @@ class ItemRow extends StatelessWidget {
     required this.index,
     required this.collections,
     required this.onChanged,
+    required this.lowStockThreshold,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isLowStock = i.quantity <= lowStockThreshold;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -164,6 +167,22 @@ class ItemRow extends StatelessWidget {
                         Chip(label: Text('Qty ${i.quantity}')),
                         Chip(label: Text(i.location ?? 'No location')),
                         Chip(label: Text(i.status ?? 'No status')),
+                        if (isLowStock)
+                          Chip(
+                            avatar: Icon(
+                              Icons.warning_amber_outlined,
+                              size: 15,
+                              color: theme.colorScheme.onErrorContainer,
+                            ),
+                            label: const Text('Low Stock'),
+                            backgroundColor: theme.colorScheme.errorContainer
+                                .withValues(alpha: 0.72),
+                            side: BorderSide.none,
+                            labelStyle: TextStyle(
+                              color: theme.colorScheme.onErrorContainer,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                       ],
                     ),
                   ],

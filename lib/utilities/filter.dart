@@ -184,7 +184,8 @@ class _FilterState extends State<Filter> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title),
+        Text(title, style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 8),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -231,118 +232,173 @@ class _FilterState extends State<Filter> {
         location != null && locationOptions.contains(location)
         ? <String>{location!}
         : <String>{};
+    final drawerWidth = (MediaQuery.sizeOf(context).width * 0.92).clamp(
+      320.0,
+      440.0,
+    );
+    final sectionTitleStyle = Theme.of(context).textTheme.titleSmall;
 
     return Drawer(
-      width: 400,
+      width: drawerWidth,
       child: ListView(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(10),
         children: [
-          Row(
-            children: [
-              Padding(padding: EdgeInsets.only(top: 10)),
-              Text("Filter"),
-              IconButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                tooltip: 'Close filters',
-                icon: Icon(Icons.chevron_left),
-              ),
-            ],
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+            title: Text('Filters', style: Theme.of(context).textTheme.titleLarge),
+            subtitle: const Text('Narrow down your inventory list'),
+            trailing: IconButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              tooltip: 'Close filters',
+              icon: const Icon(Icons.close),
+            ),
           ),
-          Padding(padding: EdgeInsets.all(10)),
+          const SizedBox(height: 6),
           if (statusOptions.isNotEmpty) ...[
-            Text("Status"),
-            Semantics(
-              container: true,
-              label: 'Filter by status',
-              child: SegmentedButton<String>(
-                showSelectedIcon: false,
-                segments: statusOptions
-                    .map(
-                      (value) => ButtonSegment<String>(
-                        value: value,
-                        label: Text(value),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("Status", style: sectionTitleStyle),
+                    const SizedBox(height: 8),
+                    Semantics(
+                      container: true,
+                      label: 'Filter by status',
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: SegmentedButton<String>(
+                          showSelectedIcon: false,
+                          segments: statusOptions
+                              .map(
+                                (value) => ButtonSegment<String>(
+                                  value: value,
+                                  label: Text(value),
+                                ),
+                              )
+                              .toList(),
+                          emptySelectionAllowed: true,
+                          selected: selectedStatus,
+                          onSelectionChanged: ((Set<String> newValue) {
+                            setState(() {
+                              status = newValue.firstOrNull;
+                            });
+                            _filterList();
+                          }),
+                        ),
                       ),
-                    )
-                    .toList(),
-                emptySelectionAllowed: true,
-                selected: selectedStatus,
-                onSelectionChanged: ((Set<String> newValue) {
-                  setState(() {
-                    status = newValue.firstOrNull;
-                  });
-                  _filterList();
-                }),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
           if (locationOptions.isNotEmpty) ...[
-            Text("Location"),
-            Semantics(
-              container: true,
-              label: 'Filter by location',
-              child: SegmentedButton<String>(
-                showSelectedIcon: false,
-                segments: locationOptions
-                    .map(
-                      (value) => ButtonSegment<String>(
-                        value: value,
-                        label: Text(value),
+            const SizedBox(height: 8),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("Location", style: sectionTitleStyle),
+                    const SizedBox(height: 8),
+                    Semantics(
+                      container: true,
+                      label: 'Filter by location',
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: SegmentedButton<String>(
+                          showSelectedIcon: false,
+                          segments: locationOptions
+                              .map(
+                                (value) => ButtonSegment<String>(
+                                  value: value,
+                                  label: Text(value),
+                                ),
+                              )
+                              .toList(),
+                          emptySelectionAllowed: true,
+                          selected: selectedLocation,
+                          onSelectionChanged: ((Set<String> newValue) {
+                            setState(() {
+                              location = newValue.firstOrNull;
+                            });
+                            _filterList();
+                          }),
+                        ),
                       ),
-                    )
-                    .toList(),
-                emptySelectionAllowed: true,
-                selected: selectedLocation,
-                onSelectionChanged: ((Set<String> newValue) {
-                  setState(() {
-                    location = newValue.firstOrNull;
-                  });
-                  _filterList();
-                }),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
-          SwitchListTile(
-            title: Text("Low stock only (<= $lowStockThreshold)"),
-            value: lowStockOnly,
-            onChanged: (value) {
-              setState(() {
-                lowStockOnly = value;
-              });
-              _filterList();
-            },
-          ),
-          Text("Price"),
-          RangeSlider(
-            values: _currentRangeValues,
-            max: maxPrice,
-            divisions:
-                (maxPrice.round().toInt() -
-                _currentRangeValues.start.round().toInt()),
-            labels: RangeLabels(
-              _currentRangeValues.start.round().toString(),
-              _currentRangeValues.end.round().toString(),
+          const SizedBox(height: 8),
+          Card(
+            child: Column(
+              children: [
+                SwitchListTile(
+                  title: Text("Low stock only (<= $lowStockThreshold)"),
+                  value: lowStockOnly,
+                  onChanged: (value) {
+                    setState(() {
+                      lowStockOnly = value;
+                    });
+                    _filterList();
+                  },
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Price", style: sectionTitleStyle),
+                      RangeSlider(
+                        values: _currentRangeValues,
+                        max: maxPrice,
+                        divisions: maxPrice.round().toInt(),
+                        labels: RangeLabels(
+                          _currentRangeValues.start.round().toString(),
+                          _currentRangeValues.end.round().toString(),
+                        ),
+                        onChanged: (RangeValues values) {
+                          setState(() {
+                            _currentRangeValues = values;
+                            _filterList();
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            onChanged: (RangeValues values) {
-              setState(() {
-                _currentRangeValues = values;
-                _filterList();
-              });
-            },
           ),
           for (final tag in sortedTags)
             if (tag.options != null && tag.options!.isNotEmpty)
-              _buildChipSection(
-                title: tag.name,
-                options: (tag.options!.toList()..sort()),
-                selected: tagFilters[tag.name] ?? {},
-                onChanged: (newValue) {
-                  setState(() {
-                    tagFilters = Map.from(tagFilters)..[tag.name] = newValue;
-                  });
-                  _filterList();
-                },
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(10),
+                    child: _buildChipSection(
+                      title: tag.name,
+                      options: (tag.options!.toList()..sort()),
+                      selected: tagFilters[tag.name] ?? {},
+                      onChanged: (newValue) {
+                        setState(() {
+                          tagFilters = Map.from(tagFilters)
+                            ..[tag.name] = newValue;
+                        });
+                        _filterList();
+                      },
+                    ),
+                  ),
+                ),
               ),
         ],
       ),

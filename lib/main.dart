@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'utilities/newitem.dart';
 import 'utilities/collections.dart';
@@ -19,14 +21,21 @@ ThemeData buildAppTheme() {
     useMaterial3: true,
     colorScheme: colorScheme,
     scaffoldBackgroundColor: colorScheme.surface,
+    textTheme: GoogleFonts.dmSansTextTheme().copyWith(
+      displaySmall: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
+      titleLarge: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
+      titleMedium: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
+      labelLarge: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
+      bodyMedium: GoogleFonts.dmSans(),
+    ),
     appBarTheme: AppBarTheme(
       centerTitle: false,
       elevation: 0,
       backgroundColor: colorScheme.surface,
       surfaceTintColor: Colors.transparent,
-      titleTextStyle: TextStyle(
+      titleTextStyle: GoogleFonts.spaceGrotesk(
         color: colorScheme.onSurface,
-        fontSize: 24,
+        fontSize: 23,
         fontWeight: FontWeight.w700,
       ),
     ),
@@ -54,7 +63,7 @@ ThemeData buildAppTheme() {
       selectedColor: colorScheme.primaryContainer,
       checkmarkColor: colorScheme.onPrimaryContainer,
       labelStyle: TextStyle(color: colorScheme.onSurface),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
     ),
     floatingActionButtonTheme: FloatingActionButtonThemeData(
       backgroundColor: colorScheme.primary,
@@ -620,47 +629,117 @@ class _ScrollState extends State<Scroll> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.inventory_2_outlined, size: 64),
-                        const SizedBox(height: 8),
-                        Text(emptyStateMessage),
-                        const SizedBox(height: 12),
-                        ElevatedButton.icon(
-                          onPressed: widget.onAddPressed,
-                          icon: const Icon(Icons.add),
-                          label: const Text('Add Item'),
+                        Container(
+                          width: math.min(
+                            MediaQuery.sizeOf(context).width - 24,
+                            520,
+                          ),
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Theme.of(context)
+                                    .colorScheme
+                                    .primaryContainer
+                                  .withValues(alpha: 0.3),
+                                Theme.of(context)
+                                    .colorScheme
+                                  .surfaceContainer,
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.outlineVariant,
+                            ),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.inventory_2_outlined,
+                                size: 60,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                hasNoItems
+                                    ? 'Start your inventory'
+                                    : 'Nothing matched',
+                                style: Theme.of(context).textTheme.titleLarge,
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                emptyStateMessage,
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 14),
+                              FilledButton.icon(
+                                onPressed: widget.onAddPressed,
+                                icon: const Icon(Icons.add),
+                                label: const Text('Add Item'),
+                              ),
+                              if (hasSearch)
+                                TextButton(
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() {
+                                      _searchQuery = '';
+                                    });
+                                    unawaited(_persistListPreferences());
+                                  },
+                                  child: const Text('Clear Search'),
+                                ),
+                              if (hasFilters && !hasNoItems)
+                                TextButton(
+                                  onPressed: () {
+                                    widget.scaffoldKey.currentState
+                                        ?.openDrawer();
+                                  },
+                                  child: const Text('Adjust Filters'),
+                                ),
+                            ],
+                          ),
                         ),
-                        if (hasSearch)
-                          TextButton(
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() {
-                                _searchQuery = '';
-                              });
-                              unawaited(_persistListPreferences());
-                            },
-                            child: const Text('Clear Search'),
-                          ),
-                        if (hasFilters && !hasNoItems)
-                          TextButton(
-                            onPressed: () {
-                              widget.scaffoldKey.currentState?.openDrawer();
-                            },
-                            child: const Text('Adjust Filters'),
-                          ),
                       ],
                     ),
                   )
-                : ListView.builder(
-                    itemCount: itemsToDisplay.length,
-                    itemBuilder: (context, index) {
-                      return ItemRow(
-                        key: ValueKey(itemsToDisplay[index].id),
-                        i: itemsToDisplay[index],
-                        index: index,
-                        collections: widget.collections,
-                        onChanged: widget.onItemsChanged,
-                      );
-                    },
+                : AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 180),
+                    child: ListView.builder(
+                      key: ValueKey(
+                        '${itemsToDisplay.length}-${_sortOption.name}-${_searchQuery.trim()}',
+                      ),
+                      itemCount: itemsToDisplay.length,
+                      itemBuilder: (context, index) {
+                        final item = itemsToDisplay[index];
+                        final durationMs = 180 + (index * 18).clamp(0, 180);
+
+                        return TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 0, end: 1),
+                          duration: Duration(milliseconds: durationMs),
+                          curve: Curves.easeOutCubic,
+                          child: ItemRow(
+                            key: ValueKey(item.id),
+                            i: item,
+                            index: index,
+                            collections: widget.collections,
+                            onChanged: widget.onItemsChanged,
+                            lowStockThreshold: widget.lowStockThreshold,
+                          ),
+                          builder: (context, value, child) {
+                            return Opacity(
+                              opacity: value,
+                              child: Transform.translate(
+                                offset: Offset(0, (1 - value) * 10),
+                                child: child,
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
                   ),
           ),
         ],
