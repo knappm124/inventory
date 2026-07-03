@@ -230,6 +230,57 @@ class _MainAppState extends State<MainApp> {
     });
   }
 
+  Future<void> _openSettings() async {
+    if (_collections == null) {
+      return;
+    }
+    await _navigatorKey.currentState?.push<void>(
+      MaterialPageRoute(
+        builder: (context) => Menu(
+          c: _collections!,
+          lowStockThreshold: _lowStockThreshold,
+          onLowStockThresholdChanged: _onLowStockThresholdChanged,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openFiltersPanel() async {
+    if (_collections == null) {
+      return;
+    }
+
+    final currentContext =
+        _scaffoldKey.currentContext ?? _navigatorKey.currentContext;
+    if (currentContext == null) {
+      return;
+    }
+
+    await showModalBottomSheet<void>(
+      context: currentContext,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      builder: (context) {
+        return FractionallySizedBox(
+          heightFactor: 0.8,
+          child: Filter(
+            c: _collections!,
+            criteria:
+                _filterCriteria ??
+                FilterCriteria(lowStockThreshold: _lowStockThreshold),
+            onCriteriaChanged: _onCriteriaChanged,
+            onFilterChanged: _onFilterChanged,
+          ),
+        );
+      },
+    );
+  }
+
   void _refreshItems() {
     if (!mounted) {
       return;
@@ -341,28 +392,20 @@ class _MainAppState extends State<MainApp> {
       home: Scaffold(
         key: _scaffoldKey,
         appBar: AppBar(
+          automaticallyImplyLeading: false,
           title: const Text('My Inventory'),
           actions: [
             IconButton(
-              onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+              onPressed: _openFiltersPanel,
               tooltip: 'Open filters',
               constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
               icon: const Icon(Icons.filter_alt_outlined),
             ),
             IconButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => Menu(
-                    c: _collections!,
-                    lowStockThreshold: _lowStockThreshold,
-                    onLowStockThresholdChanged: _onLowStockThresholdChanged,
-                  ),
-                ),
-              ),
-              tooltip: 'Open menu',
+              onPressed: _openSettings,
+              tooltip: 'Open settings',
               constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-              icon: const Icon(Icons.tune),
+              icon: const Icon(Icons.settings_outlined),
             ),
             const SizedBox(width: 4),
           ],
@@ -375,21 +418,13 @@ class _MainAppState extends State<MainApp> {
             onItemsChanged: _refreshItems,
             lowStockThreshold: _lowStockThreshold,
             onLowStockThresholdChanged: _onLowStockThresholdChanged,
-            scaffoldKey: _scaffoldKey,
+            onOpenFilters: _openFiltersPanel,
           ),
         ),
         floatingActionButton: FloatingActionButton.extended(
           onPressed: _openNewItem,
           icon: const Icon(Icons.add),
           label: const Text('Add Item'),
-        ),
-        drawer: Filter(
-          c: _collections!,
-          criteria:
-              _filterCriteria ??
-              FilterCriteria(lowStockThreshold: _lowStockThreshold),
-          onCriteriaChanged: _onCriteriaChanged,
-          onFilterChanged: _onFilterChanged,
         ),
       ),
     );
@@ -419,7 +454,7 @@ class Scroll extends StatefulWidget {
   final VoidCallback onItemsChanged;
   final int lowStockThreshold;
   final ValueChanged<int> onLowStockThresholdChanged;
-  final GlobalKey<ScaffoldState> scaffoldKey;
+  final VoidCallback onOpenFilters;
 
   const Scroll({
     super.key,
@@ -429,7 +464,7 @@ class Scroll extends StatefulWidget {
     required this.onItemsChanged,
     required this.lowStockThreshold,
     required this.onLowStockThresholdChanged,
-    required this.scaffoldKey,
+    required this.onOpenFilters,
   });
 
   @override
@@ -693,10 +728,7 @@ class _ScrollState extends State<Scroll> {
                                 ),
                               if (hasFilters && !hasNoItems)
                                 TextButton(
-                                  onPressed: () {
-                                    widget.scaffoldKey.currentState
-                                        ?.openDrawer();
-                                  },
+                                  onPressed: widget.onOpenFilters,
                                   child: const Text('Adjust Filters'),
                                 ),
                             ],

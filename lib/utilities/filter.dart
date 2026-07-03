@@ -232,14 +232,9 @@ class _FilterState extends State<Filter> {
         location != null && locationOptions.contains(location)
         ? <String>{location!}
         : <String>{};
-    final drawerWidth = (MediaQuery.sizeOf(context).width * 0.92).clamp(
-      320.0,
-      440.0,
-    );
     final sectionTitleStyle = Theme.of(context).textTheme.titleSmall;
 
-    return Drawer(
-      width: drawerWidth,
+    return Material(
       child: ListView(
         padding: const EdgeInsets.all(10),
         children: [

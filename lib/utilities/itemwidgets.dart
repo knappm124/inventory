@@ -7,12 +7,14 @@ class ItemIcons extends StatelessWidget {
   final Item i;
   final Collections collections;
   final ValueChanged<Item> onItemUpdated;
+  final VoidCallback onItemsChanged;
 
   const ItemIcons({
     super.key,
     required this.i,
     required this.collections,
     required this.onItemUpdated,
+    required this.onItemsChanged,
   });
 
   @override
@@ -64,20 +66,23 @@ class ItemIcons extends StatelessWidget {
             }
 
             collections.removeItem(i);
-            await messenger
-                .showSnackBar(
-                  SnackBar(
-                    content: Text('Deleted "${i.name}"'),
-                    action: SnackBarAction(
-                      label: 'Undo',
-                      onPressed: () {
-                        collections.addItem(i);
-                      },
-                    ),
-                  ),
-                )
-                .closed;
-            navigator.pop(true);
+            onItemsChanged();
+            messenger.showSnackBar(
+              SnackBar(
+                content: Text('Deleted "${i.name}"'),
+                duration: const Duration(seconds: 5),
+                action: SnackBarAction(
+                  label: 'Undo',
+                  onPressed: () {
+                    collections.addItem(i);
+                    onItemsChanged();
+                  },
+                ),
+              ),
+            );
+            // Delete already triggers onItemsChanged directly; avoid a second
+            // refresh from ItemRow's route-result handler.
+            navigator.pop();
           },
           tooltip: 'Delete item',
           constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
@@ -302,6 +307,7 @@ class _EditableItemState extends State<EditableItem> {
                               i: _item,
                               collections: widget.collections,
                               onItemUpdated: _handleItemUpdated,
+                              onItemsChanged: widget.onItemsChanged,
                             ),
                           ),
                         ),
@@ -429,12 +435,14 @@ class EditableItemHeader extends StatelessWidget {
   final Item i;
   final Collections collections;
   final ValueChanged<Item> onItemUpdated;
+  final VoidCallback onItemsChanged;
 
   const EditableItemHeader({
     super.key,
     required this.i,
     required this.collections,
     required this.onItemUpdated,
+    required this.onItemsChanged,
   });
 
   @override
@@ -446,6 +454,7 @@ class EditableItemHeader extends StatelessWidget {
           i: i,
           collections: collections,
           onItemUpdated: onItemUpdated,
+          onItemsChanged: onItemsChanged,
         ),
       ],
     );

@@ -417,23 +417,16 @@ class LocationChoice extends StatelessWidget {
           children: [
             Text('Location', style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: 8),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SegmentedButton<String>(
-                showSelectedIcon: false,
-                segments: options
-                    .map(
-                      (option) => ButtonSegment<String>(
-                        value: option,
-                        label: Text(option),
-                      ),
-                    )
-                    .toList(),
-                selected: <String>{safeValue},
-                onSelectionChanged: (Set<String> newSelection) {
-                  onChanged(newSelection.first);
-                },
-              ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: options.map((option) {
+                return ChoiceChip(
+                  label: Text(option),
+                  selected: option == safeValue,
+                  onSelected: (_) => onChanged(option),
+                );
+              }).toList(),
             ),
           ],
         ),
@@ -470,23 +463,16 @@ class StatusChoice extends StatelessWidget {
           children: [
             Text('Status', style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: 8),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SegmentedButton<String>(
-                showSelectedIcon: false,
-                segments: options
-                    .map(
-                      (option) => ButtonSegment<String>(
-                        value: option,
-                        label: Text(option),
-                      ),
-                    )
-                    .toList(),
-                selected: <String>{safeValue},
-                onSelectionChanged: (Set<String> newSelection) {
-                  onChanged(newSelection.first);
-                },
-              ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: options.map((option) {
+                return ChoiceChip(
+                  label: Text(option),
+                  selected: option == safeValue,
+                  onSelected: (_) => onChanged(option),
+                );
+              }).toList(),
             ),
           ],
         ),
@@ -565,6 +551,13 @@ class ImageUploaderScreen extends StatefulWidget {
 class _ImageUploaderScreenState extends State<ImageUploaderScreen> {
   Uint8List? _savedImageBytes;
   final ImagePicker _picker = ImagePicker();
+
+  void _removeImage() {
+    widget.onImageSelected('');
+    setState(() {
+      _savedImageBytes = null;
+    });
+  }
 
   @override
   void initState() {
@@ -655,6 +648,9 @@ class _ImageUploaderScreenState extends State<ImageUploaderScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final hasImage =
+        widget.initialImagePath.isNotEmpty ||
+        (_savedImageBytes?.isNotEmpty ?? false);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -691,6 +687,14 @@ class _ImageUploaderScreenState extends State<ImageUploaderScreen> {
                 icon: const Icon(Icons.upload_file),
                 label: const Text('Upload Image'),
               ),
+              if (hasImage) ...[
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: _removeImage,
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('Remove Image'),
+                ),
+              ],
             ],
           ),
         );

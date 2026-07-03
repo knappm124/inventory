@@ -112,10 +112,21 @@ class _EditorState extends State<Editor> {
   void _submitTag() {
     name = controller.text.trim();
     if (name.isNotEmpty) {
+      final createdTagName = name;
       setState(() {
-        widget.c.addTag(Tag(name, null));
+        widget.c.addTag(Tag(createdTagName, null));
         controller.clear();
       });
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => EditTag(
+            tag: createdTagName,
+            collections: widget.c,
+          ),
+        ),
+      );
     }
   }
 
