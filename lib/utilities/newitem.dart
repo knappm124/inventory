@@ -25,6 +25,16 @@ class _NewItemState extends State<NewItem> {
   String _imagePath = '';
   final Map<String, Set<String>> _selectedTagValues = {};
 
+  EdgeInsets _contentPadding(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    return EdgeInsets.fromLTRB(
+      16,
+      16,
+      16,
+      16 + mediaQuery.padding.bottom + mediaQuery.viewInsets.bottom,
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -153,158 +163,170 @@ class _NewItemState extends State<NewItem> {
           const SizedBox(width: 4),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 760),
-            child: Form(
-              key: _formKey,
-              child: FocusTraversalGroup(
-                policy: OrderedTraversalPolicy(),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-                              child: Text(
-                                'Basic Info',
-                                style: Theme.of(context).textTheme.titleMedium,
-                              ),
-                            ),
-                            FocusTraversalOrder(
-                              order: const NumericFocusOrder(1),
-                              child: NewName(
-                                controller: _nameController,
-                                validator: (value) {
-                                  final trimmed = value?.trim() ?? '';
-                                  if (trimmed.isEmpty) {
-                                    return 'Name is required.';
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ),
-                            FocusTraversalOrder(
-                              order: const NumericFocusOrder(2),
-                              child: NewPrice(
-                                controller: _priceController,
-                                validator: (value) {
-                                  final trimmed = value?.trim() ?? '';
-                                  if (trimmed.isEmpty) {
-                                    return 'Price is required.';
-                                  }
-                                  final parsed = double.tryParse(trimmed);
-                                  if (parsed == null) {
-                                    return 'Enter a valid number.';
-                                  }
-                                  if (parsed < 0) {
-                                    return 'Price cannot be negative.';
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ),
-                            FocusTraversalOrder(
-                              order: const NumericFocusOrder(3),
-                              child: NewQuantity(
-                                controller: _quantityController,
-                                validator: (value) {
-                                  final trimmed = value?.trim() ?? '';
-                                  if (trimmed.isEmpty) {
-                                    return 'Quantity is required.';
-                                  }
-                                  final parsed = int.tryParse(trimmed);
-                                  if (parsed == null || parsed <= 0) {
-                                    return 'Enter a valid positive integer.';
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(8),
-                        child: ImageUploaderScreen(
-                          initialImagePath: _imagePath,
-                          onImageSelected: (imagePath) {
-                            setState(() {
-                              _imagePath = imagePath;
-                            });
-                          },
-                        ),
-                      ),
-                    ),
-                    if (locationOptions.isNotEmpty) ...[
-                      const SizedBox(height: 12),
+      resizeToAvoidBottomInset: true,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: _contentPadding(context),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 760),
+              child: Form(
+                key: _formKey,
+                child: FocusTraversalGroup(
+                  policy: OrderedTraversalPolicy(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Card(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: FocusTraversalOrder(
-                            order: const NumericFocusOrder(4),
-                            child: LocationChoice(
-                              options: locationOptions,
-                              value: _location ?? locationOptions.first,
-                              onChanged: (value) =>
-                                  setState(() => _location = value),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                    if (statusOptions.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: FocusTraversalOrder(
-                            order: const NumericFocusOrder(5),
-                            child: StatusChoice(
-                              options: statusOptions,
-                              value: _status ?? statusOptions.first,
-                              onChanged: (value) =>
-                                  setState(() => _status = value),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                    if (tagRows.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
+                                padding: const EdgeInsets.fromLTRB(
+                                  12,
+                                  8,
+                                  12,
+                                  0,
                                 ),
                                 child: Text(
-                                  'Tags',
-                                  style: Theme.of(context).textTheme.titleMedium,
+                                  'Basic Info',
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.titleMedium,
                                 ),
                               ),
-                              const SizedBox(height: 6),
-                              ...tagRows,
+                              FocusTraversalOrder(
+                                order: const NumericFocusOrder(1),
+                                child: NewName(
+                                  controller: _nameController,
+                                  validator: (value) {
+                                    final trimmed = value?.trim() ?? '';
+                                    if (trimmed.isEmpty) {
+                                      return 'Name is required.';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ),
+                              FocusTraversalOrder(
+                                order: const NumericFocusOrder(2),
+                                child: NewPrice(
+                                  controller: _priceController,
+                                  validator: (value) {
+                                    final trimmed = value?.trim() ?? '';
+                                    if (trimmed.isEmpty) {
+                                      return 'Price is required.';
+                                    }
+                                    final parsed = double.tryParse(trimmed);
+                                    if (parsed == null) {
+                                      return 'Enter a valid number.';
+                                    }
+                                    if (parsed < 0) {
+                                      return 'Price cannot be negative.';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ),
+                              FocusTraversalOrder(
+                                order: const NumericFocusOrder(3),
+                                child: NewQuantity(
+                                  controller: _quantityController,
+                                  validator: (value) {
+                                    final trimmed = value?.trim() ?? '';
+                                    if (trimmed.isEmpty) {
+                                      return 'Quantity is required.';
+                                    }
+                                    final parsed = int.tryParse(trimmed);
+                                    if (parsed == null || parsed <= 0) {
+                                      return 'Enter a valid positive integer.';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ),
                             ],
                           ),
                         ),
                       ),
+                      const SizedBox(height: 12),
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: ImageUploaderScreen(
+                            initialImagePath: _imagePath,
+                            onImageSelected: (imagePath) {
+                              setState(() {
+                                _imagePath = imagePath;
+                              });
+                            },
+                          ),
+                        ),
+                      ),
+                      if (locationOptions.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: FocusTraversalOrder(
+                              order: const NumericFocusOrder(4),
+                              child: LocationChoice(
+                                options: locationOptions,
+                                value: _location ?? locationOptions.first,
+                                onChanged: (value) =>
+                                    setState(() => _location = value),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                      if (statusOptions.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: FocusTraversalOrder(
+                              order: const NumericFocusOrder(5),
+                              child: StatusChoice(
+                                options: statusOptions,
+                                value: _status ?? statusOptions.first,
+                                onChanged: (value) =>
+                                    setState(() => _status = value),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                      if (tagRows.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                  ),
+                                  child: Text(
+                                    'Tags',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.titleMedium,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                ...tagRows,
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -654,8 +676,9 @@ class _ImageUploaderScreenState extends State<ImageUploaderScreen> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final previewSize =
-            (constraints.maxWidth - 48).clamp(180, 320).toDouble();
+        final previewSize = (constraints.maxWidth - 48)
+            .clamp(180, 320)
+            .toDouble();
 
         return Padding(
           padding: const EdgeInsets.all(16),
@@ -673,7 +696,10 @@ class _ImageUploaderScreenState extends State<ImageUploaderScreen> {
                 child: _savedImageBytes != null && _savedImageBytes!.isNotEmpty
                     ? ClipRRect(
                         borderRadius: BorderRadius.circular(11),
-                        child: Image.memory(_savedImageBytes!, fit: BoxFit.cover),
+                        child: Image.memory(
+                          _savedImageBytes!,
+                          fit: BoxFit.cover,
+                        ),
                       )
                     : Icon(
                         Icons.image_outlined,

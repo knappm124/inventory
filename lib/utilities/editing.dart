@@ -23,6 +23,16 @@ class _EditingItemState extends State<EditingItem> {
   late String _imagePath;
   final Map<String, Set<String>> _selectedTagValues = {};
 
+  EdgeInsets _contentPadding(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    return EdgeInsets.fromLTRB(
+      12,
+      12,
+      12,
+      12 + mediaQuery.padding.bottom + mediaQuery.viewInsets.bottom,
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -121,89 +131,103 @@ class _EditingItemState extends State<EditingItem> {
     }).toList();
 
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       body: Column(
         children: [
-          Padding(padding: EdgeInsets.all(10)),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.arrow_back),
+          SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.arrow_back),
+                  ),
+                  IconButton(
+                    onPressed: _saveItem,
+                    icon: const Icon(Icons.save),
+                  ),
+                ],
               ),
-              IconButton(onPressed: _saveItem, icon: const Icon(Icons.save)),
-            ],
+            ),
           ),
           Expanded(
-            child: SingleChildScrollView(
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    NewName(
-                      controller: _nameController,
-                      validator: (value) {
-                        final trimmed = value?.trim() ?? '';
-                        if (trimmed.isEmpty) {
-                          return 'Name is required.';
-                        }
-                        return null;
-                      },
-                    ),
-                    ImageUploaderScreen(
-                      initialImagePath: _imagePath,
-                      onImageSelected: (imagePath) {
-                        setState(() {
-                          _imagePath = imagePath;
-                        });
-                      },
-                    ),
-                    NewPrice(
-                      controller: _priceController,
-                      validator: (value) {
-                        final trimmed = value?.trim() ?? '';
-                        if (trimmed.isEmpty) {
-                          return 'Price is required.';
-                        }
-                        final parsed = double.tryParse(trimmed);
-                        if (parsed == null) {
-                          return 'Enter a valid number.';
-                        }
-                        if (parsed < 0) {
-                          return 'Price cannot be negative.';
-                        }
-                        return null;
-                      },
-                    ),
-                    NewQuantity(
-                      controller: _quantityController,
-                      validator: (value) {
-                        final trimmed = value?.trim() ?? '';
-                        if (trimmed.isEmpty) {
-                          return 'Quantity is required.';
-                        }
-                        final parsed = int.tryParse(trimmed);
-                        if (parsed == null || parsed <= 0) {
-                          return 'Enter a valid positive integer.';
-                        }
-                        return null;
-                      },
-                    ),
-                    if (locationOptions.isNotEmpty)
-                      LocationChoice(
-                        options: locationOptions,
-                        value: _location ?? locationOptions.first,
-                        onChanged: (value) => setState(() => _location = value),
+            child: SafeArea(
+              top: false,
+              child: SingleChildScrollView(
+                padding: _contentPadding(context),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      NewName(
+                        controller: _nameController,
+                        validator: (value) {
+                          final trimmed = value?.trim() ?? '';
+                          if (trimmed.isEmpty) {
+                            return 'Name is required.';
+                          }
+                          return null;
+                        },
                       ),
-                    if (statusOptions.isNotEmpty)
-                      StatusChoice(
-                        options: statusOptions,
-                        value: _status ?? statusOptions.first,
-                        onChanged: (value) => setState(() => _status = value),
+                      ImageUploaderScreen(
+                        initialImagePath: _imagePath,
+                        onImageSelected: (imagePath) {
+                          setState(() {
+                            _imagePath = imagePath;
+                          });
+                        },
                       ),
-                    ...tagRows,
-                  ],
+                      NewPrice(
+                        controller: _priceController,
+                        validator: (value) {
+                          final trimmed = value?.trim() ?? '';
+                          if (trimmed.isEmpty) {
+                            return 'Price is required.';
+                          }
+                          final parsed = double.tryParse(trimmed);
+                          if (parsed == null) {
+                            return 'Enter a valid number.';
+                          }
+                          if (parsed < 0) {
+                            return 'Price cannot be negative.';
+                          }
+                          return null;
+                        },
+                      ),
+                      NewQuantity(
+                        controller: _quantityController,
+                        validator: (value) {
+                          final trimmed = value?.trim() ?? '';
+                          if (trimmed.isEmpty) {
+                            return 'Quantity is required.';
+                          }
+                          final parsed = int.tryParse(trimmed);
+                          if (parsed == null || parsed <= 0) {
+                            return 'Enter a valid positive integer.';
+                          }
+                          return null;
+                        },
+                      ),
+                      if (locationOptions.isNotEmpty)
+                        LocationChoice(
+                          options: locationOptions,
+                          value: _location ?? locationOptions.first,
+                          onChanged: (value) =>
+                              setState(() => _location = value),
+                        ),
+                      if (statusOptions.isNotEmpty)
+                        StatusChoice(
+                          options: statusOptions,
+                          value: _status ?? statusOptions.first,
+                          onChanged: (value) => setState(() => _status = value),
+                        ),
+                      ...tagRows,
+                    ],
+                  ),
                 ),
               ),
             ),

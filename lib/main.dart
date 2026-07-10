@@ -243,6 +243,14 @@ class _MainAppState extends State<MainApp> {
         ),
       ),
     );
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _applyCurrentFilters();
+    });
   }
 
   Future<void> _openFiltersPanel() async {
@@ -340,14 +348,18 @@ class _MainAppState extends State<MainApp> {
   }
 
   void _applyCurrentFilters() {
-    final activeCriteria =
-        _filterCriteria ??
-        FilterCriteria(lowStockThreshold: _lowStockThreshold);
-
     if (_collections == null) {
       _filteredItems = null;
       return;
     }
+
+    if (_filterCriteria != null) {
+      _filterCriteria = _normalizeCriteria(_filterCriteria!);
+    }
+
+    final activeCriteria =
+        _filterCriteria ??
+        FilterCriteria(lowStockThreshold: _lowStockThreshold);
 
     if (!activeCriteria.hasActiveFilters) {
       _filteredItems = null;
@@ -357,6 +369,49 @@ class _MainAppState extends State<MainApp> {
     _filteredItems = activeCriteria.apply(
       _collections!.items,
       _collections!.maxPrice,
+    );
+  }
+
+  FilterCriteria _normalizeCriteria(FilterCriteria criteria) {
+    if (_collections == null) {
+      return criteria;
+    }
+
+    final currentCollections = _collections!;
+    final statusOptions = currentCollections.getAllStatuses();
+    final locationOptions = currentCollections.getAllLocations();
+    final availableTagOptions = <String, Set<String>>{};
+
+    for (final tag in currentCollections.getAllTags()) {
+      availableTagOptions[tag.name] = Set<String>.from(
+        tag.options ?? <String>{},
+      );
+    }
+
+    final normalizedTagFilters = <String, Set<String>>{};
+    criteria.tagFilters.forEach((tagName, selectedOptions) {
+      final optionsForTag = availableTagOptions[tagName];
+      if (optionsForTag == null || selectedOptions.isEmpty) {
+        return;
+      }
+
+      final validSelections = selectedOptions
+          .where((option) => optionsForTag.contains(option))
+          .toSet();
+      if (validSelections.isNotEmpty) {
+        normalizedTagFilters[tagName] = validSelections;
+      }
+    });
+
+    return FilterCriteria(
+      status: statusOptions.contains(criteria.status) ? criteria.status : null,
+      location: locationOptions.contains(criteria.location)
+          ? criteria.location
+          : null,
+      lowStockOnly: criteria.lowStockOnly,
+      lowStockThreshold: criteria.lowStockThreshold,
+      priceRange: criteria.priceRange,
+      tagFilters: normalizedTagFilters,
     );
   }
 
@@ -673,20 +728,18 @@ class _ScrollState extends State<Scroll> {
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               colors: [
-                                Theme.of(context)
-                                    .colorScheme
-                                    .primaryContainer
-                                  .withValues(alpha: 0.3),
-                                Theme.of(context)
-                                    .colorScheme
-                                  .surfaceContainer,
+                                Theme.of(context).colorScheme.primaryContainer
+                                    .withValues(alpha: 0.3),
+                                Theme.of(context).colorScheme.surfaceContainer,
                               ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: Theme.of(context).colorScheme.outlineVariant,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.outlineVariant,
                             ),
                           ),
                           child: Column(
@@ -738,7 +791,7 @@ class _ScrollState extends State<Scroll> {
                     ),
                   )
                 : AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 180),
+                    duration: const Duration(milliseconds: 180),
                     child: ListView.builder(
                       key: ValueKey(
                         '${itemsToDisplay.length}-${_sortOption.name}-${_searchQuery.trim()}',

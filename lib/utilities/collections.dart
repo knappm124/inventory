@@ -702,6 +702,107 @@ class Collections {
     return this;
   }
 
+  Collections renameTag(String oldName, String newName) {
+    final previousName = oldName.trim();
+    final nextName = newName.trim();
+
+    if (previousName.isEmpty || nextName.isEmpty) {
+      throw Exception('Tag name cannot be empty.');
+    }
+
+    if (previousName == nextName) {
+      return this;
+    }
+
+    final existingTargetTag = tags.any((tag) => tag.name == nextName);
+    if (existingTargetTag) {
+      throw Exception('A tag named $nextName already exists.');
+    }
+
+    Tag? sourceTag;
+    for (final tag in tags) {
+      if (tag.name == previousName) {
+        sourceTag = tag;
+        break;
+      }
+    }
+
+    if (sourceTag == null) {
+      throw Exception('Tag $previousName was not found.');
+    }
+
+    sourceTag.name = nextName;
+
+    for (final item in items) {
+      final itemTags = item.tags;
+      if (itemTags == null || !itemTags.containsKey(previousName)) {
+        continue;
+      }
+
+      final values = Set<String>.from(itemTags[previousName] ?? <String>{});
+      itemTags.remove(previousName);
+      itemTags[nextName] = values;
+    }
+
+    persistChanges();
+    return this;
+  }
+
+  Collections renameTagOption(
+    String tagName,
+    String oldOption,
+    String newOption,
+  ) {
+    final name = tagName.trim();
+    final previousOption = oldOption.trim();
+    final nextOption = newOption.trim();
+
+    if (name.isEmpty || previousOption.isEmpty || nextOption.isEmpty) {
+      throw Exception('Tag option name cannot be empty.');
+    }
+
+    if (previousOption == nextOption) {
+      return this;
+    }
+
+    Tag? tagToUpdate;
+    for (final tag in tags) {
+      if (tag.name == name) {
+        tagToUpdate = tag;
+        break;
+      }
+    }
+
+    if (tagToUpdate == null) {
+      throw Exception('Tag $name was not found.');
+    }
+
+    final options = tagToUpdate.options;
+    if (options == null || !options.contains(previousOption)) {
+      throw Exception('Option $previousOption was not found in tag $name.');
+    }
+
+    if (options.contains(nextOption)) {
+      throw Exception('Option $nextOption already exists in tag $name.');
+    }
+
+    options.remove(previousOption);
+    options.add(nextOption);
+
+    for (final item in items) {
+      final selectedOptions = item.tags?[name];
+      if (selectedOptions == null ||
+          !selectedOptions.contains(previousOption)) {
+        continue;
+      }
+      selectedOptions.remove(previousOption);
+      selectedOptions.add(nextOption);
+    }
+
+    persistChanges();
+    return this;
+  }
+
   Collections removeLocation(String l) {
     for (Item i in items) {
       if (i.location == l) {
@@ -729,6 +830,72 @@ class Collections {
     if (removed) {
       persistChanges();
     }
+    return this;
+  }
+
+  Collections renameLocation(String oldLocation, String newLocation) {
+    final previousLocation = oldLocation.trim();
+    final nextLocation = newLocation.trim();
+
+    if (previousLocation.isEmpty || nextLocation.isEmpty) {
+      throw Exception('Location name cannot be empty.');
+    }
+
+    if (previousLocation == nextLocation) {
+      return this;
+    }
+
+    if (!locations.contains(previousLocation)) {
+      throw Exception('Location $previousLocation was not found.');
+    }
+
+    if (locations.contains(nextLocation)) {
+      throw Exception('Location $nextLocation already exists.');
+    }
+
+    locations.remove(previousLocation);
+    locations.add(nextLocation);
+
+    for (final item in items) {
+      if (item.location == previousLocation) {
+        item.setLocation(nextLocation);
+      }
+    }
+
+    persistChanges();
+    return this;
+  }
+
+  Collections renameStatus(String oldStatus, String newStatus) {
+    final previousStatus = oldStatus.trim();
+    final nextStatus = newStatus.trim();
+
+    if (previousStatus.isEmpty || nextStatus.isEmpty) {
+      throw Exception('Status name cannot be empty.');
+    }
+
+    if (previousStatus == nextStatus) {
+      return this;
+    }
+
+    if (!status.contains(previousStatus)) {
+      throw Exception('Status $previousStatus was not found.');
+    }
+
+    if (status.contains(nextStatus)) {
+      throw Exception('Status $nextStatus already exists.');
+    }
+
+    status.remove(previousStatus);
+    status.add(nextStatus);
+
+    for (final item in items) {
+      if (item.status == previousStatus) {
+        item.setStatus(nextStatus);
+      }
+    }
+
+    persistChanges();
     return this;
   }
 

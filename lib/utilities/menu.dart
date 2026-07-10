@@ -46,6 +46,16 @@ class _EditorState extends State<Editor> {
   final TextEditingController controller = TextEditingController();
   String name = "";
 
+  EdgeInsets _listContentPadding(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    return EdgeInsets.fromLTRB(
+      12,
+      12,
+      12,
+      12 + mediaQuery.padding.bottom + mediaQuery.viewInsets.bottom,
+    );
+  }
+
   String _formatRemovalError(Object error) {
     final raw = error.toString();
     const exceptionPrefix = 'Exception: ';
@@ -59,6 +69,48 @@ class _EditorState extends State<Editor> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(_formatRemovalError(error))));
+  }
+
+  Future<String?> _promptRename({
+    required String title,
+    required String label,
+    required String initialValue,
+  }) async {
+    final textController = TextEditingController(text: initialValue);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(title),
+          content: TextField(
+            controller: textController,
+            autofocus: true,
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) {
+              Navigator.of(dialogContext).pop(textController.text.trim());
+            },
+            decoration: InputDecoration(
+              labelText: label,
+              border: const OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop(textController.text.trim());
+              },
+              child: const Text('Rename'),
+            ),
+          ],
+        );
+      },
+    );
+    textController.dispose();
+    return result;
   }
 
   void _removeLocation(String location) {
@@ -109,6 +161,56 @@ class _EditorState extends State<Editor> {
     }
   }
 
+  Future<void> _renameLocation(String location) async {
+    final renamed = await _promptRename(
+      title: 'Rename Location',
+      label: 'Location name',
+      initialValue: location,
+    );
+
+    if (!mounted || renamed == null) {
+      return;
+    }
+
+    final trimmed = renamed.trim();
+    if (trimmed.isEmpty || trimmed == location) {
+      return;
+    }
+
+    try {
+      setState(() {
+        widget.c.renameLocation(location, trimmed);
+      });
+    } catch (error) {
+      _showRemovalError(error);
+    }
+  }
+
+  Future<void> _renameStatus(String currentStatus) async {
+    final renamed = await _promptRename(
+      title: 'Rename Status',
+      label: 'Status name',
+      initialValue: currentStatus,
+    );
+
+    if (!mounted || renamed == null) {
+      return;
+    }
+
+    final trimmed = renamed.trim();
+    if (trimmed.isEmpty || trimmed == currentStatus) {
+      return;
+    }
+
+    try {
+      setState(() {
+        widget.c.renameStatus(currentStatus, trimmed);
+      });
+    } catch (error) {
+      _showRemovalError(error);
+    }
+  }
+
   void _submitTag() {
     name = controller.text.trim();
     if (name.isNotEmpty) {
@@ -121,10 +223,8 @@ class _EditorState extends State<Editor> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => EditTag(
-            tag: createdTagName,
-            collections: widget.c,
-          ),
+          builder: (context) =>
+              EditTag(tag: createdTagName, collections: widget.c),
         ),
       );
     }
@@ -147,6 +247,7 @@ class _EditorState extends State<Editor> {
             options: widget.c.getAllLocations(),
             onAddOption: _submitLocation,
             onRemoveOption: _removeLocation,
+            onRenameOption: _renameLocation,
           ),
         );
       case "Status":
@@ -157,6 +258,7 @@ class _EditorState extends State<Editor> {
             options: widget.c.getAllStatuses(),
             onAddOption: _submitStatus,
             onRemoveOption: _removeStatus,
+            onRenameOption: _renameStatus,
           ),
         );
       case "Tags":
@@ -166,82 +268,89 @@ class _EditorState extends State<Editor> {
           );
         return Scaffold(
           appBar: AppBar(title: const Text('Tags')),
-          body: ListView(
-            padding: const EdgeInsets.all(12),
-            children: [
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: Column(
-                    children: [
-                      for (Tag t in tags)
-                        ListTile(
-                          title: Text(t.getName()),
-                          trailing: Wrap(
-                            spacing: 4,
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.edit),
-                                tooltip: 'Edit tag',
-                                constraints: const BoxConstraints(
-                                  minWidth: 48,
-                                  minHeight: 48,
-                                ),
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => EditTag(
-                                        tag: t.getName(),
-                                        collections: widget.c,
+          resizeToAvoidBottomInset: true,
+          body: SafeArea(
+            child: ListView(
+              padding: _listContentPadding(context),
+              children: [
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Column(
+                      children: [
+                        for (Tag t in tags)
+                          ListTile(
+                            title: Text(t.getName()),
+                            trailing: Wrap(
+                              spacing: 4,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.edit),
+                                  tooltip: 'Edit tag',
+                                  constraints: const BoxConstraints(
+                                    minWidth: 48,
+                                    minHeight: 48,
+                                  ),
+                                  onPressed: () async {
+                                    await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => EditTag(
+                                          tag: t.getName(),
+                                          collections: widget.c,
+                                        ),
                                       ),
-                                    ),
-                                  );
-                                },
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete),
-                                tooltip: 'Delete tag',
-                                constraints: const BoxConstraints(
-                                  minWidth: 48,
-                                  minHeight: 48,
+                                    );
+                                    if (!mounted) {
+                                      return;
+                                    }
+                                    setState(() {});
+                                  },
                                 ),
-                                onPressed: () => _removeTag(t.getName()),
-                              ),
-                            ],
+                                IconButton(
+                                  icon: const Icon(Icons.delete),
+                                  tooltip: 'Delete tag',
+                                  constraints: const BoxConstraints(
+                                    minWidth: 48,
+                                    minHeight: 48,
+                                  ),
+                                  onPressed: () => _removeTag(t.getName()),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      children: [
+                        TextFormField(
+                          controller: controller,
+                          validator: widget.validator,
+                          autovalidateMode: AutovalidateMode.onUserInteraction,
+                          textInputAction: TextInputAction.done,
+                          onFieldSubmitted: (_) => _submitTag(),
+                          decoration: const InputDecoration(labelText: 'Name'),
+                        ),
+                        const SizedBox(height: 10),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: FilledButton(
+                            onPressed: _submitTag,
+                            child: const Text("Add Tag"),
                           ),
                         ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    children: [
-                      TextFormField(
-                        controller: controller,
-                        validator: widget.validator,
-                        autovalidateMode: AutovalidateMode.onUserInteraction,
-                        textInputAction: TextInputAction.done,
-                        onFieldSubmitted: (_) => _submitTag(),
-                        decoration: const InputDecoration(labelText: 'Name'),
-                      ),
-                      const SizedBox(height: 10),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: FilledButton(
-                          onPressed: _submitTag,
-                          child: const Text("Add Tag"),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       default:
@@ -345,46 +454,57 @@ class _MenuState extends State<Menu> {
 
   @override
   Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
+      resizeToAvoidBottomInset: true,
       body: FocusTraversalGroup(
         policy: OrderedTraversalPolicy(),
-        child: ListView(
-          padding: const EdgeInsets.all(12),
-          children: [
-            Card(
-              child: Column(
-                children: [
-                  FocusTraversalOrder(
-                    order: const NumericFocusOrder(1),
-                    child: MenuItem(c: widget.c, name: "Locations"),
-                  ),
-                  const Divider(height: 1),
-                  FocusTraversalOrder(
-                    order: const NumericFocusOrder(2),
-                    child: MenuItem(c: widget.c, name: "Status"),
-                  ),
-                  const Divider(height: 1),
-                  FocusTraversalOrder(
-                    order: const NumericFocusOrder(3),
-                    child: MenuItem(c: widget.c, name: "Tags"),
-                  ),
-                  const Divider(height: 1),
-                  FocusTraversalOrder(
-                    order: const NumericFocusOrder(4),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                      minVerticalPadding: 12,
-                      title: const Text('Low Stock Threshold'),
-                      subtitle: Text('Current: $_lowStockThreshold'),
-                      trailing: const Icon(Icons.tune),
-                      onTap: _editLowStockThreshold,
-                    ),
-                  ),
-                ],
-              ),
+        child: SafeArea(
+          child: ListView(
+            padding: EdgeInsets.fromLTRB(
+              12,
+              12,
+              12,
+              12 + mediaQuery.padding.bottom + mediaQuery.viewInsets.bottom,
             ),
-          ],
+            children: [
+              Card(
+                child: Column(
+                  children: [
+                    FocusTraversalOrder(
+                      order: const NumericFocusOrder(1),
+                      child: MenuItem(c: widget.c, name: "Locations"),
+                    ),
+                    const Divider(height: 1),
+                    FocusTraversalOrder(
+                      order: const NumericFocusOrder(2),
+                      child: MenuItem(c: widget.c, name: "Status"),
+                    ),
+                    const Divider(height: 1),
+                    FocusTraversalOrder(
+                      order: const NumericFocusOrder(3),
+                      child: MenuItem(c: widget.c, name: "Tags"),
+                    ),
+                    const Divider(height: 1),
+                    FocusTraversalOrder(
+                      order: const NumericFocusOrder(4),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                        ),
+                        minVerticalPadding: 12,
+                        title: const Text('Low Stock Threshold'),
+                        subtitle: Text('Current: $_lowStockThreshold'),
+                        trailing: const Icon(Icons.tune),
+                        onTap: _editLowStockThreshold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -396,12 +516,14 @@ class _OptionEditorBody extends StatefulWidget {
   final Set<String> options;
   final ValueChanged<String> onAddOption;
   final ValueChanged<String> onRemoveOption;
+  final Future<void> Function(String)? onRenameOption;
 
   const _OptionEditorBody({
     required this.name,
     required this.options,
     required this.onAddOption,
     required this.onRemoveOption,
+    this.onRenameOption,
   });
 
   @override
@@ -410,6 +532,16 @@ class _OptionEditorBody extends StatefulWidget {
 
 class _OptionEditorBodyState extends State<_OptionEditorBody> {
   final TextEditingController _controller = TextEditingController();
+
+  EdgeInsets _listContentPadding(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    return EdgeInsets.fromLTRB(
+      12,
+      12,
+      12,
+      12 + mediaQuery.padding.bottom + mediaQuery.viewInsets.bottom,
+    );
+  }
 
   @override
   void dispose() {
@@ -429,50 +561,71 @@ class _OptionEditorBodyState extends State<_OptionEditorBody> {
   Widget build(BuildContext context) {
     final sortedOptions = widget.options.toList()..sort();
 
-    return ListView(
-      padding: const EdgeInsets.all(12),
-      children: [
-        Card(
-          child: sortedOptions.isEmpty
-              ? const ListTile(title: Text('No options yet'))
-              : Column(
-                  children: [
-                    for (String option in sortedOptions)
-                      ListTile(
-                        title: Text(option),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete),
-                          tooltip: 'Delete option',
-                          constraints: const BoxConstraints(
-                            minWidth: 48,
-                            minHeight: 48,
+    return SafeArea(
+      child: ListView(
+        padding: _listContentPadding(context),
+        children: [
+          Card(
+            child: sortedOptions.isEmpty
+                ? const ListTile(title: Text('No options yet'))
+                : Column(
+                    children: [
+                      for (String option in sortedOptions)
+                        ListTile(
+                          title: Text(option),
+                          trailing: Wrap(
+                            spacing: 4,
+                            children: [
+                              if (widget.onRenameOption != null)
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.drive_file_rename_outline,
+                                  ),
+                                  tooltip: 'Rename option',
+                                  constraints: const BoxConstraints(
+                                    minWidth: 48,
+                                    minHeight: 48,
+                                  ),
+                                  onPressed: () {
+                                    widget.onRenameOption?.call(option);
+                                  },
+                                ),
+                              IconButton(
+                                icon: const Icon(Icons.delete),
+                                tooltip: 'Delete option',
+                                constraints: const BoxConstraints(
+                                  minWidth: 48,
+                                  minHeight: 48,
+                                ),
+                                onPressed: () => widget.onRemoveOption(option),
+                              ),
+                            ],
                           ),
-                          onPressed: () => widget.onRemoveOption(option),
                         ),
-                      ),
-                  ],
-                ),
-        ),
-        const SizedBox(height: 12),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: const InputDecoration(labelText: 'Name'),
-                    onSubmitted: (_) => _addOption(),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 10),
-                FilledButton(onPressed: _addOption, child: const Text('Add')),
-              ],
+          ),
+          const SizedBox(height: 12),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _controller,
+                      decoration: const InputDecoration(labelText: 'Name'),
+                      onSubmitted: (_) => _addOption(),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  FilledButton(onPressed: _addOption, child: const Text('Add')),
+                ],
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
