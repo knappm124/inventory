@@ -238,6 +238,7 @@ class _MainAppState extends State<MainApp> {
       MaterialPageRoute(
         builder: (context) => Menu(
           c: _collections!,
+          filteredItems: _filteredItems,
           lowStockThreshold: _lowStockThreshold,
           onLowStockThresholdChanged: _onLowStockThresholdChanged,
         ),

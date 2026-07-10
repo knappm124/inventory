@@ -1,18 +1,17 @@
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:flutter/foundation.dart';
+import 'package:printing/printing.dart';
 import 'package:flutter/services.dart';
 import 'collections.dart';
 import 'image_utils.dart';
-import 'dart:convert';
 import 'dart:io';
-import 'package:web/web.dart' as web;
 
 class PdfGenerator {
   final pw.Document pdf = pw.Document();
-  final Collections collections;
+  final List<Item> items;
 
-  PdfGenerator(this.collections);
+  PdfGenerator(this.items);
 
   Future<Uint8List?> _loadImageBytes(String? source) async {
     final rawSource = source?.trim();
@@ -61,11 +60,33 @@ class PdfGenerator {
   Future<void> generatePdf() async {
     final rows = <pw.TableRow>[
       pw.TableRow(
-        children: [pw.Text("Image"), pw.Text("Name"), pw.Text("Price")],
+        children: [
+          pw.Padding(
+            padding: const pw.EdgeInsets.all(10),
+            child: pw.Text(
+              "Image",
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+            ),
+          ),
+          pw.Padding(
+            padding: const pw.EdgeInsets.all(10),
+            child: pw.Text(
+              "Name",
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+            ),
+          ),
+          pw.Padding(
+            padding: const pw.EdgeInsets.all(10),
+            child: pw.Text(
+              "Price",
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+            ),
+          ),
+        ],
       ),
     ];
 
-    for (final item in collections.items) {
+    for (final item in items) {
       final imageBytes = await _loadImageBytes(item.img);
       final imageCell = imageBytes == null || imageBytes.isEmpty
           ? pw.Text("No image")
@@ -79,9 +100,15 @@ class PdfGenerator {
       rows.add(
         pw.TableRow(
           children: [
-            imageCell,
-            pw.Text(item.name),
-            pw.Text(item.price.toStringAsFixed(2)),
+            pw.Padding(padding: const pw.EdgeInsets.all(10), child: imageCell),
+            pw.Padding(
+              padding: const pw.EdgeInsets.all(10),
+              child: pw.Text(item.name),
+            ),
+            pw.Padding(
+              padding: const pw.EdgeInsets.all(10),
+              child: pw.Text(item.price.toStringAsFixed(2)),
+            ),
           ],
         ),
       );
@@ -91,19 +118,30 @@ class PdfGenerator {
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         build: (context) => [
-          pw.Text("Inventory"),
+          pw.Text(
+            "Inventory",
+            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 32),
+          ),
           pw.SizedBox(height: 20),
-          pw.Table(children: rows),
+          pw.Table(
+            columnWidths: {
+              0: pw.FixedColumnWidth(100),
+              1: pw.FixedColumnWidth(100),
+              2: pw.FixedColumnWidth(100),
+            },
+            children: rows,
+            border: pw.TableBorder.all(
+              color: PdfColors.black,
+              width: 1.0,
+              style: pw.BorderStyle.solid,
+            ),
+          ),
         ],
       ),
     );
 
-    var savedFile = await pdf.save();
-    List<int> fileInts = List.from(savedFile);
-    web.HTMLAnchorElement()
-      ..href =
-          "data:application/octet-stream;charset=utf-16le;base64,${base64.encode(fileInts)}"
-      ..setAttribute("download", "${DateTime.now().millisecondsSinceEpoch}.pdf")
-      ..click();
+    final savedFile = await pdf.save();
+    final fileName = '${DateTime.now().millisecondsSinceEpoch}.pdf';
+    await Printing.sharePdf(bytes: savedFile, filename: fileName);
   }
 }

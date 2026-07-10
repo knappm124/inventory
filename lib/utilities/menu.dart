@@ -5,9 +5,15 @@ import './pdf.dart';
 
 class MenuItem extends StatelessWidget {
   final Collections c;
+  final List<Item>? filteredItems;
   final String name;
 
-  const MenuItem({super.key, required this.c, required this.name});
+  const MenuItem({
+    super.key,
+    required this.c,
+    required this.filteredItems,
+    required this.name,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +25,8 @@ class MenuItem extends StatelessWidget {
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => Editor(tagName: name, c: c),
+          builder: (context) =>
+              Editor(tagName: name, c: c, filteredItems: filteredItems),
         ),
       ),
     );
@@ -29,6 +36,7 @@ class MenuItem extends StatelessWidget {
 class Editor extends StatefulWidget {
   final String tagName;
   final Collections c;
+  final List<Item>? filteredItems;
 
   String? validator(String? value) {
     if (value == null || value.isEmpty) {
@@ -37,7 +45,12 @@ class Editor extends StatefulWidget {
     return null;
   }
 
-  const Editor({super.key, required this.tagName, required this.c});
+  const Editor({
+    super.key,
+    required this.tagName,
+    required this.c,
+    required this.filteredItems,
+  });
 
   @override
   State<Editor> createState() => _EditorState();
@@ -268,7 +281,9 @@ class _EditorState extends State<Editor> {
           body: Center(
             child: ElevatedButton(
               onPressed: () {
-                PdfGenerator(widget.c).generatePdf();
+                PdfGenerator(
+                  widget.filteredItems ?? widget.c.items,
+                ).generatePdf();
               },
               child: const Text('Export to PDF'),
             ),
@@ -389,12 +404,14 @@ class _EditorState extends State<Editor> {
 
 class Menu extends StatefulWidget {
   final Collections c;
+  final List<Item>? filteredItems;
   final int lowStockThreshold;
   final ValueChanged<int> onLowStockThresholdChanged;
 
   const Menu({
     super.key,
     required this.c,
+    required this.filteredItems,
     required this.lowStockThreshold,
     required this.onLowStockThresholdChanged,
   });
@@ -487,17 +504,29 @@ class _MenuState extends State<Menu> {
                   children: [
                     FocusTraversalOrder(
                       order: const NumericFocusOrder(1),
-                      child: MenuItem(c: widget.c, name: "Locations"),
+                      child: MenuItem(
+                        c: widget.c,
+                        filteredItems: widget.filteredItems,
+                        name: "Locations",
+                      ),
                     ),
                     const Divider(height: 1),
                     FocusTraversalOrder(
                       order: const NumericFocusOrder(2),
-                      child: MenuItem(c: widget.c, name: "Status"),
+                      child: MenuItem(
+                        c: widget.c,
+                        filteredItems: widget.filteredItems,
+                        name: "Status",
+                      ),
                     ),
                     const Divider(height: 1),
                     FocusTraversalOrder(
                       order: const NumericFocusOrder(3),
-                      child: MenuItem(c: widget.c, name: "Tags"),
+                      child: MenuItem(
+                        c: widget.c,
+                        filteredItems: widget.filteredItems,
+                        name: "Tags",
+                      ),
                     ),
                     const Divider(height: 1),
                     FocusTraversalOrder(
@@ -516,7 +545,11 @@ class _MenuState extends State<Menu> {
                     const Divider(height: 1),
                     FocusTraversalOrder(
                       order: const NumericFocusOrder(5),
-                      child: MenuItem(c: widget.c, name: "Export"),
+                      child: MenuItem(
+                        c: widget.c,
+                        filteredItems: widget.filteredItems,
+                        name: "Export",
+                      ),
                     ),
                   ],
                 ),
