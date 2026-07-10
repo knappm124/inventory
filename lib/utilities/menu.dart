@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import './collections.dart';
 import './edittag.dart';
+import './pdf.dart';
 
 class MenuItem extends StatelessWidget {
   final Collections c;
@@ -261,6 +262,18 @@ class _EditorState extends State<Editor> {
             onRenameOption: _renameStatus,
           ),
         );
+      case "Export":
+        return Scaffold(
+          appBar: AppBar(title: const Text('Export to PDF')),
+          body: Center(
+            child: ElevatedButton(
+              onPressed: () {
+                PdfGenerator(widget.c).generatePdf();
+              },
+              child: const Text('Export to PDF'),
+            ),
+          ),
+        );
       case "Tags":
         final tags = widget.c.getAllTags().toList()
           ..sort(
@@ -499,6 +512,11 @@ class _MenuState extends State<Menu> {
                         trailing: const Icon(Icons.tune),
                         onTap: _editLowStockThreshold,
                       ),
+                    ),
+                    const Divider(height: 1),
+                    FocusTraversalOrder(
+                      order: const NumericFocusOrder(5),
+                      child: MenuItem(c: widget.c, name: "Export"),
                     ),
                   ],
                 ),
