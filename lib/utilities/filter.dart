@@ -290,7 +290,7 @@ class _FilterState extends State<Filter> {
                       Text(
                         'Narrow down your inventory list and focus on the items you need right now.',
                         style: theme.textTheme.bodyLarge?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
+                          color: colorScheme.onSurface,
                           height: 1.35,
                         ),
                       ),

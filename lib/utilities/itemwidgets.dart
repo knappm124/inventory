@@ -128,203 +128,224 @@ class ItemRow extends StatelessWidget {
           ),
         ],
       ),
-      child: Material(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(22),
-        child: InkWell(
+      child: Semantics(
+        button: true,
+        label:
+            '${i.name}, quantity ${i.quantity}, ${i.location ?? 'no location'}, ${isLowStock ? 'low stock' : 'in stock'}',
+        hint: 'Open item details',
+        child: Material(
+          color: colorScheme.surface,
           borderRadius: BorderRadius.circular(22),
-          onTap: () async {
-            final result = await Navigator.push<bool>(
-              context,
-              MaterialPageRoute(
-                builder: (context) => EditableItem(
-                  i: i,
-                  collections: collections,
-                  onItemsChanged: onChanged,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(22),
+            canRequestFocus: true,
+            overlayColor: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.focused)) {
+                return colorScheme.primary.withValues(alpha: 0.22);
+              }
+              if (states.contains(WidgetState.hovered)) {
+                return colorScheme.primary.withValues(alpha: 0.08);
+              }
+              return null;
+            }),
+            onTap: () async {
+              final result = await Navigator.push<bool>(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => EditableItem(
+                    i: i,
+                    collections: collections,
+                    onItemsChanged: onChanged,
+                  ),
+                ),
+              );
+              if (result == true) {
+                onChanged();
+              }
+            },
+            child: Ink(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: colorScheme.outlineVariant),
+                gradient: LinearGradient(
+                  colors: [
+                    colorScheme.surface,
+                    colorScheme.surfaceContainerLowest,
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
               ),
-            );
-            if (result == true) {
-              onChanged();
-            }
-          },
-          child: Ink(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: colorScheme.outlineVariant),
-              gradient: LinearGradient(
-                colors: [
-                  colorScheme.surface,
-                  colorScheme.surfaceContainerLowest,
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Stack(
-                    children: [
-                      Container(
-                        width: 96,
-                        height: 108,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(18),
-                          gradient: LinearGradient(
-                            colors: [
-                              colorScheme.primaryContainer.withValues(
-                                alpha: 0.72,
-                              ),
-                              colorScheme.surfaceContainerHigh,
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(18),
-                          child: buildInventoryImage(
-                            source: i.img ?? '',
-                            width: 96,
-                            height: 108,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      ),
-                      if (imageCount > 1)
-                        Positioned(
-                          right: 8,
-                          bottom: 8,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: colorScheme.surface.withValues(
-                                alpha: 0.92,
-                              ),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.photo_library_outlined,
-                                  size: 14,
-                                  color: colorScheme.onSurfaceVariant,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '$imageCount',
-                                  style: theme.textTheme.labelSmall?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Stack(
                       children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                        Container(
+                          width: 96,
+                          height: 108,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(18),
+                            gradient: LinearGradient(
+                              colors: [
+                                colorScheme.primaryContainer.withValues(
+                                  alpha: 0.72,
+                                ),
+                                colorScheme.surfaceContainerHigh,
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(18),
+                            child: buildInventoryImage(
+                              source: i.img ?? '',
+                              width: 96,
+                              height: 108,
+                              fit: BoxFit.cover,
+                              semanticLabel: '${i.name} item image',
+                            ),
+                          ),
+                        ),
+                        if (imageCount > 1)
+                          Positioned(
+                            right: 8,
+                            bottom: 8,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: colorScheme.surface.withValues(
+                                  alpha: 0.92,
+                                ),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Text(
-                                    i.name,
-                                    style: theme.textTheme.titleLarge?.copyWith(
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
+                                  Icon(
+                                    Icons.photo_library_outlined,
+                                    size: 14,
+                                    color: colorScheme.onSurfaceVariant,
                                   ),
-                                  const SizedBox(height: 6),
+                                  const SizedBox(width: 4),
                                   Text(
-                                    i.location ?? 'No location set',
-                                    style: theme.textTheme.bodyMedium?.copyWith(
-                                      color: colorScheme.onSurfaceVariant,
+                                    '$imageCount',
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      fontWeight: FontWeight.w700,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  '\$${i.price.toStringAsFixed(2)}',
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text('Value', style: theme.textTheme.bodySmall),
-                              ],
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 14,
-                          runSpacing: 8,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            _buildInlineMeta(
-                              context,
-                              icon: Icons.inventory_2_outlined,
-                              label: 'Qty ${i.quantity}',
-                            ),
-                            _buildInlineMeta(
-                              context,
-                              icon: Icons.label_important_outline,
-                              label: i.status ?? 'No status',
-                            ),
-                            if (isLowStock)
-                              _buildInfoPill(
-                                context,
-                                icon: Icons.warning_amber_outlined,
-                                label: 'Low stock',
-                                accentColor: colorScheme.errorContainer,
-                                foregroundColor: colorScheme.onErrorContainer,
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                imageCount > 1
-                                    ? '$imageCount photos attached'
-                                    : 'Tap to open item details',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ),
-                            Icon(
-                              Icons.arrow_forward_rounded,
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                          ],
-                        ),
+                          ),
                       ],
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      i.name,
+                                      style: theme.textTheme.titleLarge
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      i.location ?? 'No location set',
+                                      style: theme.textTheme.bodyMedium
+                                          ?.copyWith(
+                                            color: colorScheme.onSurface,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    '\$${i.price.toStringAsFixed(2)}',
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(fontWeight: FontWeight.w800),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Value',
+                                    style: theme.textTheme.bodySmall,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 14,
+                            runSpacing: 8,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              _buildInlineMeta(
+                                context,
+                                icon: Icons.inventory_2_outlined,
+                                label: 'Qty ${i.quantity}',
+                              ),
+                              _buildInlineMeta(
+                                context,
+                                icon: Icons.label_important_outline,
+                                label: i.status ?? 'No status',
+                              ),
+                              if (isLowStock)
+                                _buildInfoPill(
+                                  context,
+                                  icon: Icons.warning_amber_outlined,
+                                  label: 'Low stock',
+                                  accentColor: colorScheme.errorContainer,
+                                  foregroundColor: colorScheme.onErrorContainer,
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  imageCount > 1
+                                      ? '$imageCount photos attached'
+                                      : 'Tap to open item details',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: colorScheme.onSurface,
+                                  ),
+                                ),
+                              ),
+                              Icon(
+                                Icons.arrow_forward_rounded,
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -425,307 +446,299 @@ class _EditableItemState extends State<EditableItem> {
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 960),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(28),
-                        gradient: LinearGradient(
-                          colors: [
-                            colorScheme.primaryContainer.withValues(
-                              alpha: 0.95,
-                            ),
-                            colorScheme.surfaceContainerHigh,
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        border: Border.all(
-                          color: colorScheme.outlineVariant.withValues(
-                            alpha: 0.85,
-                          ),
-                        ),
-                      ),
-                      child: Wrap(
-                        alignment: WrapAlignment.spaceBetween,
-                        runSpacing: 16,
-                        children: [
-                          ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 520),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  _item.name,
-                                  style: theme.textTheme.headlineSmall
-                                      ?.copyWith(fontWeight: FontWeight.w800),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  _item.location ?? 'No location assigned',
-                                  style: theme.textTheme.bodyLarge?.copyWith(
-                                    color: colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                Wrap(
-                                  spacing: 16,
-                                  runSpacing: 10,
-                                  children: [
-                                    _buildInlineMeta(
-                                      context,
-                                      icon: Icons.paid_outlined,
-                                      label:
-                                          '\$${_item.price.toStringAsFixed(2)}',
-                                    ),
-                                    _buildInlineMeta(
-                                      context,
-                                      icon: Icons.inventory_2_outlined,
-                                      label: 'Qty ${_item.quantity}',
-                                    ),
-                                    _buildInlineMeta(
-                                      context,
-                                      icon: Icons.label_important_outline,
-                                      label: _item.status ?? 'No status',
-                                    ),
-                                    if (isLowStock)
-                                      _buildInfoPill(
-                                        context,
-                                        icon: Icons.warning_amber_outlined,
-                                        label: 'Low stock',
-                                        accentColor: colorScheme.errorContainer,
-                                        foregroundColor:
-                                            colorScheme.onErrorContainer,
-                                      ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 10,
-                            ),
-                            decoration: BoxDecoration(
-                              color: colorScheme.surface.withValues(
-                                alpha: 0.72,
+                child: FocusTraversalGroup(
+                  policy: OrderedTraversalPolicy(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(28),
+                          gradient: LinearGradient(
+                            colors: [
+                              colorScheme.primaryContainer.withValues(
+                                alpha: 0.95,
                               ),
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                            child: Text(
-                              images.length > 1
-                                  ? '${images.length} photos saved'
-                                  : 'Single photo view',
-                              style: theme.textTheme.labelLarge,
+                              colorScheme.surfaceContainerHigh,
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          border: Border.all(
+                            color: colorScheme.outlineVariant.withValues(
+                              alpha: 0.85,
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Flex(
-                      direction: isWide ? Axis.horizontal : Axis.vertical,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          flex: isWide ? 2 : 0,
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: colorScheme.surface,
-                              borderRadius: BorderRadius.circular(28),
-                              border: Border.all(
-                                color: colorScheme.outlineVariant,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: colorScheme.shadow.withValues(
-                                    alpha: 0.04,
-                                  ),
-                                  blurRadius: 18,
-                                  offset: const Offset(0, 10),
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(24),
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        colorScheme.primaryContainer.withValues(
-                                          alpha: 0.5,
-                                        ),
-                                        colorScheme.surfaceContainerHigh,
-                                      ],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ),
-                                  ),
-                                  child: Center(
-                                    child: buildInventoryImage(
-                                      source: _activeImage(),
-                                      width: isWide ? 400 : 300,
-                                      height: 280,
-                                      fit: BoxFit.contain,
-                                    ),
-                                  ),
-                                ),
-                                if (images.length > 1) ...[
-                                  const SizedBox(height: 16),
+                        ),
+                        child: Wrap(
+                          alignment: WrapAlignment.spaceBetween,
+                          runSpacing: 16,
+                          children: [
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 520),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
                                   Text(
-                                    'Gallery',
-                                    style: theme.textTheme.titleMedium
+                                    _item.name,
+                                    style: theme.textTheme.headlineSmall
                                         ?.copyWith(fontWeight: FontWeight.w800),
                                   ),
-                                  const SizedBox(height: 10),
-                                  SizedBox(
-                                    height: 92,
-                                    child: ListView.separated(
-                                      scrollDirection: Axis.horizontal,
-                                      itemCount: images.length,
-                                      separatorBuilder: (context, index) =>
-                                          const SizedBox(width: 10),
-                                      itemBuilder: (context, index) {
-                                        final selected =
-                                            _selectedImageIndex == index;
-                                        return InkWell(
-                                          borderRadius: BorderRadius.circular(
-                                            16,
-                                          ),
-                                          onTap: () {
-                                            setState(() {
-                                              _selectedImageIndex = index;
-                                            });
-                                          },
-                                          child: Container(
-                                            width: 92,
-                                            padding: const EdgeInsets.all(3),
-                                            decoration: BoxDecoration(
-                                              borderRadius:
-                                                  BorderRadius.circular(16),
-                                              border: Border.all(
-                                                color: selected
-                                                    ? colorScheme.primary
-                                                    : colorScheme
-                                                          .outlineVariant,
-                                                width: selected ? 2 : 1,
-                                              ),
-                                              color: selected
-                                                  ? colorScheme.primaryContainer
-                                                        .withValues(alpha: 0.35)
-                                                  : colorScheme
-                                                        .surfaceContainerLowest,
-                                            ),
-                                            child: ClipRRect(
-                                              borderRadius:
-                                                  BorderRadius.circular(13),
-                                              child: buildInventoryImage(
-                                                source: images[index],
-                                                width: 86,
-                                                height: 86,
-                                                fit: BoxFit.cover,
-                                              ),
-                                            ),
-                                          ),
-                                        );
-                                      },
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    _item.location ?? 'No location assigned',
+                                    style: theme.textTheme.bodyLarge?.copyWith(
+                                      color: colorScheme.onSurface,
                                     ),
                                   ),
+                                  const SizedBox(height: 16),
+                                  Wrap(
+                                    spacing: 16,
+                                    runSpacing: 10,
+                                    children: [
+                                      _buildInlineMeta(
+                                        context,
+                                        icon: Icons.paid_outlined,
+                                        label:
+                                            '\$${_item.price.toStringAsFixed(2)}',
+                                      ),
+                                      _buildInlineMeta(
+                                        context,
+                                        icon: Icons.inventory_2_outlined,
+                                        label: 'Qty ${_item.quantity}',
+                                      ),
+                                      _buildInlineMeta(
+                                        context,
+                                        icon: Icons.label_important_outline,
+                                        label: _item.status ?? 'No status',
+                                      ),
+                                      if (isLowStock)
+                                        _buildInfoPill(
+                                          context,
+                                          icon: Icons.warning_amber_outlined,
+                                          label: 'Low stock',
+                                          accentColor:
+                                              colorScheme.errorContainer,
+                                          foregroundColor:
+                                              colorScheme.onErrorContainer,
+                                        ),
+                                    ],
+                                  ),
                                 ],
-                              ],
-                            ),
-                          ),
-                        ),
-                        SizedBox(
-                          width: isWide ? 16 : 0,
-                          height: isWide ? 0 : 16,
-                        ),
-                        Expanded(
-                          flex: isWide ? 1 : 0,
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: colorScheme.surface,
-                              borderRadius: BorderRadius.circular(28),
-                              border: Border.all(
-                                color: colorScheme.outlineVariant,
                               ),
                             ),
-                            child: EditableItemHeader(
-                              i: _item,
-                              collections: widget.collections,
-                              onItemUpdated: _handleItemUpdated,
-                              onItemsChanged: widget.onItemsChanged,
-                              onAdjustQuantity: _adjustQuantity,
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: colorScheme.surface.withValues(
+                                  alpha: 0.72,
+                                ),
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                              child: Text(
+                                images.length > 1
+                                    ? '${images.length} photos saved'
+                                    : 'Single photo view',
+                                style: theme.textTheme.labelLarge,
+                              ),
                             ),
-                          ),
+                          ],
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        color: colorScheme.surface,
-                        borderRadius: BorderRadius.circular(28),
-                        border: Border.all(color: colorScheme.outlineVariant),
                       ),
-                      child: Column(
+                      const SizedBox(height: 16),
+                      Flex(
+                        direction: isWide ? Axis.horizontal : Axis.vertical,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Inventory Details',
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w800,
+                          FocusTraversalOrder(
+                            order: const NumericFocusOrder(1),
+                            child: Expanded(
+                              flex: isWide ? 2 : 0,
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: colorScheme.surface,
+                                  borderRadius: BorderRadius.circular(28),
+                                  border: Border.all(
+                                    color: colorScheme.outlineVariant,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: colorScheme.shadow.withValues(
+                                        alpha: 0.04,
+                                      ),
+                                      blurRadius: 18,
+                                      offset: const Offset(0, 10),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(24),
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            colorScheme.primaryContainer
+                                                .withValues(alpha: 0.5),
+                                            colorScheme.surfaceContainerHigh,
+                                          ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                      ),
+                                      child: Center(
+                                        child: buildInventoryImage(
+                                          source: _activeImage(),
+                                          width: isWide ? 400 : 300,
+                                          height: 280,
+                                          fit: BoxFit.contain,
+                                          semanticLabel:
+                                              '${_item.name} selected image',
+                                        ),
+                                      ),
+                                    ),
+                                    if (images.length > 1) ...[
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        'Gallery',
+                                        style: theme.textTheme.titleMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                      ),
+                                      const SizedBox(height: 10),
+                                      SizedBox(
+                                        height: 92,
+                                        child: ListView.separated(
+                                          scrollDirection: Axis.horizontal,
+                                          itemCount: images.length,
+                                          separatorBuilder: (context, index) =>
+                                              const SizedBox(width: 10),
+                                          itemBuilder: (context, index) {
+                                            final selected =
+                                                _selectedImageIndex == index;
+                                            return Semantics(
+                                              button: true,
+                                              selected: selected,
+                                              label:
+                                                  '${_item.name} gallery image ${index + 1}',
+                                              hint: 'Select this image',
+                                              child: InkWell(
+                                                borderRadius:
+                                                    BorderRadius.circular(16),
+                                                canRequestFocus: true,
+                                                overlayColor:
+                                                    WidgetStateProperty.resolveWith(
+                                                      (states) {
+                                                        if (states.contains(
+                                                          WidgetState.focused,
+                                                        )) {
+                                                          return colorScheme
+                                                              .primary
+                                                              .withValues(
+                                                                alpha: 0.22,
+                                                              );
+                                                        }
+                                                        return null;
+                                                      },
+                                                    ),
+                                                onTap: () {
+                                                  setState(() {
+                                                    _selectedImageIndex = index;
+                                                  });
+                                                },
+                                                child: Container(
+                                                  width: 92,
+                                                  padding: const EdgeInsets.all(
+                                                    3,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          16,
+                                                        ),
+                                                    border: Border.all(
+                                                      color: selected
+                                                          ? colorScheme.primary
+                                                          : colorScheme
+                                                                .outlineVariant,
+                                                      width: selected ? 2 : 1,
+                                                    ),
+                                                    color: selected
+                                                        ? colorScheme
+                                                              .primaryContainer
+                                                              .withValues(
+                                                                alpha: 0.35,
+                                                              )
+                                                        : colorScheme
+                                                              .surfaceContainerLowest,
+                                                  ),
+                                                  child: ClipRRect(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          13,
+                                                        ),
+                                                    child: buildInventoryImage(
+                                                      source: images[index],
+                                                      width: 86,
+                                                      height: 86,
+                                                      fit: BoxFit.cover,
+                                                      semanticLabel:
+                                                          '${_item.name} gallery image ${index + 1}',
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 14),
-                          Wrap(
-                            spacing: 12,
-                            runSpacing: 12,
-                            children: [
-                              _buildDetailStat(
-                                context,
-                                label: 'Price',
-                                value: '\$${_item.price.toStringAsFixed(2)}',
-                                icon: Icons.paid_outlined,
+                          SizedBox(
+                            width: isWide ? 16 : 0,
+                            height: isWide ? 0 : 16,
+                          ),
+                          FocusTraversalOrder(
+                            order: const NumericFocusOrder(2),
+                            child: Expanded(
+                              flex: isWide ? 1 : 0,
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: colorScheme.surface,
+                                  borderRadius: BorderRadius.circular(28),
+                                  border: Border.all(
+                                    color: colorScheme.outlineVariant,
+                                  ),
+                                ),
+                                child: EditableItemHeader(
+                                  i: _item,
+                                  collections: widget.collections,
+                                  onItemUpdated: _handleItemUpdated,
+                                  onItemsChanged: widget.onItemsChanged,
+                                  onAdjustQuantity: _adjustQuantity,
+                                ),
                               ),
-                              _buildDetailStat(
-                                context,
-                                label: 'Quantity',
-                                value: '${_item.quantity}',
-                                icon: Icons.inventory_2_outlined,
-                              ),
-                              _buildDetailStat(
-                                context,
-                                label: 'Location',
-                                value: _item.location ?? 'Not set',
-                                icon: Icons.place_outlined,
-                              ),
-                              _buildDetailStat(
-                                context,
-                                label: 'Status',
-                                value: _item.status ?? 'Not set',
-                                icon: Icons.label_important_outline,
-                              ),
-                            ],
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                    if (sortedTagNames.isNotEmpty) ...[
                       const SizedBox(height: 12),
                       Container(
                         width: double.infinity,
@@ -739,46 +752,104 @@ class _EditableItemState extends State<EditableItem> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Tags',
+                              'Inventory Details',
                               style: theme.textTheme.titleLarge?.copyWith(
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
                             const SizedBox(height: 14),
-                            for (final name in sortedTagNames)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 14),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      name,
-                                      style: theme.textTheme.labelLarge,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Wrap(
-                                      spacing: 8,
-                                      runSpacing: 8,
-                                      children: [
-                                        for (final option
-                                            in ((_item.tags?[name]?.toList() ??
-                                                  <String>[])
-                                              ..sort()))
-                                          _buildInfoPill(
-                                            context,
-                                            icon: Icons.sell_outlined,
-                                            label: option,
-                                          ),
-                                      ],
-                                    ),
-                                  ],
+                            Wrap(
+                              spacing: 12,
+                              runSpacing: 12,
+                              children: [
+                                _buildDetailStat(
+                                  context,
+                                  label: 'Price',
+                                  value: '\$${_item.price.toStringAsFixed(2)}',
+                                  icon: Icons.paid_outlined,
                                 ),
-                              ),
+                                _buildDetailStat(
+                                  context,
+                                  label: 'Quantity',
+                                  value: '${_item.quantity}',
+                                  icon: Icons.inventory_2_outlined,
+                                ),
+                                _buildDetailStat(
+                                  context,
+                                  label: 'Location',
+                                  value: _item.location ?? 'Not set',
+                                  icon: Icons.place_outlined,
+                                ),
+                                _buildDetailStat(
+                                  context,
+                                  label: 'Status',
+                                  value: _item.status ?? 'Not set',
+                                  icon: Icons.label_important_outline,
+                                ),
+                              ],
+                            ),
                           ],
                         ),
                       ),
+                      if (sortedTagNames.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            color: colorScheme.surface,
+                            borderRadius: BorderRadius.circular(28),
+                            border: Border.all(
+                              color: colorScheme.outlineVariant,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Tags',
+                                style: theme.textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              for (final name in sortedTagNames)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 14),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        name,
+                                        style: theme.textTheme.labelLarge,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Wrap(
+                                        spacing: 8,
+                                        runSpacing: 8,
+                                        children: [
+                                          for (final option
+                                              in ((_item.tags?[name]
+                                                        ?.toList() ??
+                                                    <String>[])
+                                                ..sort()))
+                                            _buildInfoPill(
+                                              context,
+                                              icon: Icons.sell_outlined,
+                                              label: option,
+                                            ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -823,7 +894,7 @@ class EditableItemHeader extends StatelessWidget {
         Text(
           'Adjust quantity or jump into editing without leaving this screen.',
           style: theme.textTheme.bodyMedium?.copyWith(
-            color: colorScheme.onSurfaceVariant,
+            color: colorScheme.onSurface,
           ),
         ),
         const SizedBox(height: 18),
@@ -950,7 +1021,7 @@ Widget _buildInlineMeta(
       Text(
         label,
         style: theme.textTheme.bodyMedium?.copyWith(
-          color: colorScheme.onSurfaceVariant,
+          color: colorScheme.onSurface,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -990,7 +1061,7 @@ Widget _buildDetailStat(
         Text(
           label,
           style: theme.textTheme.bodySmall?.copyWith(
-            color: colorScheme.onSurfaceVariant,
+            color: colorScheme.onSurface,
           ),
         ),
       ],

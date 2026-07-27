@@ -895,7 +895,7 @@ class _PanelHero extends StatelessWidget {
                 Text(
                   subtitle,
                   style: theme.textTheme.bodyLarge?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
+                    color: colorScheme.onSurface,
                     height: 1.35,
                   ),
                 ),

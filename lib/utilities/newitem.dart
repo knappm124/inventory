@@ -825,7 +825,7 @@ class _ImageUploaderScreenState extends State<ImageUploaderScreen> {
                       ? 'Choose the main image with the star, or remove photos you no longer need.'
                       : 'Add a few images to make the item easier to recognize later.',
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
+                    color: colorScheme.onSurface,
                   ),
                 ),
               ),
@@ -969,7 +969,7 @@ class EditorHeroCard extends StatelessWidget {
                 Text(
                   subtitle,
                   style: theme.textTheme.bodyLarge?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
+                    color: colorScheme.onSurface,
                     height: 1.35,
                   ),
                 ),
@@ -1046,7 +1046,7 @@ class EditorSectionBlock extends StatelessWidget {
             Text(
               subtitle!,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
+                color: colorScheme.onSurface,
               ),
             ),
           ],

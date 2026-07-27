@@ -40,7 +40,7 @@ ThemeData buildAppTheme() {
       titleMedium: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
       labelLarge: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
       bodyMedium: GoogleFonts.dmSans(),
-      bodySmall: GoogleFonts.dmSans(color: colorScheme.onSurfaceVariant),
+      bodySmall: GoogleFonts.dmSans(color: colorScheme.onSurface),
     ),
     appBarTheme: AppBarTheme(
       centerTitle: false,
@@ -929,6 +929,7 @@ class _ScrollState extends State<Scroll> {
                     value: '$totalItems',
                     icon: Icons.inventory_2_outlined,
                     onTap: widget.onItemsTilePressed,
+                    semanticHint: 'Clears quick filters and shows all items.',
                     compact: isCompact,
                   ),
                   _buildMetricCard(
@@ -941,6 +942,7 @@ class _ScrollState extends State<Scroll> {
                         : colorScheme.primary,
                     isSelected: lowStockFilterActive,
                     onTap: widget.onLowStockTilePressed,
+                    semanticHint: 'Toggles the low stock quick filter.',
                     compact: isCompact,
                   ),
                   _buildMetricCard(
@@ -993,6 +995,7 @@ class _ScrollState extends State<Scroll> {
     Color? accentColor,
     bool isSelected = false,
     VoidCallback? onTap,
+    String? semanticHint,
     bool compact = false,
   }) {
     final theme = Theme.of(context);
@@ -1036,7 +1039,7 @@ class _ScrollState extends State<Scroll> {
             label,
             style: theme.textTheme.bodySmall?.copyWith(
               fontSize: compact ? 11.5 : null,
-              color: colorScheme.onSurfaceVariant,
+              color: colorScheme.onSurface,
             ),
           ),
         ],
@@ -1048,10 +1051,30 @@ class _ScrollState extends State<Scroll> {
     }
 
     final radius = BorderRadius.circular(compact ? 16 : 20);
-    return Material(
-      color: Colors.transparent,
-      borderRadius: radius,
-      child: InkWell(borderRadius: radius, onTap: onTap, child: card),
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: '$label: $value',
+      hint: semanticHint,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: radius,
+        child: InkWell(
+          borderRadius: radius,
+          canRequestFocus: true,
+          overlayColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.focused)) {
+              return colorScheme.primary.withValues(alpha: 0.22);
+            }
+            if (states.contains(WidgetState.hovered)) {
+              return colorScheme.primary.withValues(alpha: 0.08);
+            }
+            return null;
+          }),
+          onTap: onTap,
+          child: card,
+        ),
+      ),
     );
   }
 
@@ -1086,6 +1109,7 @@ class _ScrollState extends State<Scroll> {
                 child: TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
+                    labelText: 'Search inventory',
                     prefixIcon: const Icon(Icons.search),
                     hintText: 'Search name, location, or status',
                     border: const OutlineInputBorder(),
@@ -1125,7 +1149,7 @@ class _ScrollState extends State<Scroll> {
           Text(
             'Sort by',
             style: theme.textTheme.titleSmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
+              color: colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 10),
@@ -1172,7 +1196,7 @@ class _ScrollState extends State<Scroll> {
               Text(
                 '$visibleCount of $totalCount visible. $subtitle',
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
+                  color: colorScheme.onSurface,
                 ),
               ),
             ],
