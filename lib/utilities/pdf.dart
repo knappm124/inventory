@@ -141,7 +141,7 @@ class PdfGenerator {
     );
 
     final savedFile = await pdf.save();
-    final fileName = '${DateTime.now().millisecondsSinceEpoch}.pdf';
+    final fileName = 'inventory_${DateTime.now().year.toString()}_${DateTime.now().month.toString()}_${DateTime.now().day.toString()}.pdf';
     await Printing.sharePdf(bytes: savedFile, filename: fileName);
   }
 }
