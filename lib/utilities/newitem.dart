@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+
 import 'collections.dart';
 import 'image_utils.dart';
 
@@ -22,7 +23,7 @@ class _NewItemState extends State<NewItem> {
   final TextEditingController _quantityController = TextEditingController();
   late String? _location;
   late String? _status;
-  String _imagePath = '';
+  List<String> _imagePaths = <String>[];
   final Map<String, Set<String>> _selectedTagValues = {};
 
   EdgeInsets _contentPadding(BuildContext context) {
@@ -122,7 +123,8 @@ class _NewItemState extends State<NewItem> {
       quantity,
       selectedLocation,
       selectedStatus,
-      _imagePath,
+      _imagePaths.isEmpty ? null : _imagePaths.first,
+      _imagePaths,
       selectedTags,
     );
 
@@ -134,6 +136,7 @@ class _NewItemState extends State<NewItem> {
   Widget build(BuildContext context) {
     final locationOptions = _locationOptions();
     final statusOptions = _statusOptions();
+    final theme = Theme.of(context);
     final sortedTags = widget.collections.tags.toList()
       ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
 
@@ -177,154 +180,154 @@ class _NewItemState extends State<NewItem> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Card(
+                      EditorHeroCard(
+                        title: 'Create a new inventory item',
+                        subtitle:
+                            'Capture the essentials, attach photos, and organize the item so it is easy to find later.',
+                        trailing: EditorSummaryPill(
+                          icon: Icons.add_box_outlined,
+                          label: _imagePaths.isEmpty
+                              ? 'Ready for details'
+                              : '${_imagePaths.length} photos selected',
+                        ),
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  12,
-                                  8,
-                                  12,
-                                  0,
-                                ),
-                                child: Text(
-                                  'Basic Info',
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.titleMedium,
-                                ),
-                              ),
-                              FocusTraversalOrder(
-                                order: const NumericFocusOrder(1),
-                                child: NewName(
-                                  controller: _nameController,
-                                  validator: (value) {
-                                    final trimmed = value?.trim() ?? '';
-                                    if (trimmed.isEmpty) {
-                                      return 'Name is required.';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                              ),
-                              FocusTraversalOrder(
-                                order: const NumericFocusOrder(2),
-                                child: NewPrice(
-                                  controller: _priceController,
-                                  validator: (value) {
-                                    final trimmed = value?.trim() ?? '';
-                                    if (trimmed.isEmpty) {
-                                      return 'Price is required.';
-                                    }
-                                    final parsed = double.tryParse(trimmed);
-                                    if (parsed == null) {
-                                      return 'Enter a valid number.';
-                                    }
-                                    if (parsed < 0) {
-                                      return 'Price cannot be negative.';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                              ),
-                              FocusTraversalOrder(
-                                order: const NumericFocusOrder(3),
-                                child: NewQuantity(
-                                  controller: _quantityController,
-                                  validator: (value) {
-                                    final trimmed = value?.trim() ?? '';
-                                    if (trimmed.isEmpty) {
-                                      return 'Quantity is required.';
-                                    }
-                                    final parsed = int.tryParse(trimmed);
-                                    if (parsed == null || parsed <= 0) {
-                                      return 'Enter a valid positive integer.';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                              ),
-                            ],
+                          padding: const EdgeInsets.only(top: 18),
+                          child: ImageUploaderScreen(
+                            initialImagePaths: _imagePaths,
+                            onImagesChanged: (imagePaths) {
+                              setState(() {
+                                _imagePaths = List<String>.from(imagePaths);
+                              });
+                            },
+                            useStandaloneChrome: false,
                           ),
                         ),
                       ),
                       const SizedBox(height: 12),
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(8),
-                          child: ImageUploaderScreen(
-                            initialImagePath: _imagePath,
-                            onImageSelected: (imagePath) {
-                              setState(() {
-                                _imagePath = imagePath;
-                              });
-                            },
+                      EditorFormSurface(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            EditorSectionBlock(
+                              title: 'Basic Info',
+                              subtitle:
+                                  'Name it clearly and set the current price and quantity.',
+                              child: Column(
+                                children: [
+                                  FocusTraversalOrder(
+                                    order: const NumericFocusOrder(1),
+                                    child: NewName(
+                                      controller: _nameController,
+                                      validator: (value) {
+                                        final trimmed = value?.trim() ?? '';
+                                        if (trimmed.isEmpty) {
+                                          return 'Name is required.';
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                  ),
+                                  FocusTraversalOrder(
+                                    order: const NumericFocusOrder(2),
+                                    child: NewPrice(
+                                      controller: _priceController,
+                                      validator: (value) {
+                                        final trimmed = value?.trim() ?? '';
+                                        if (trimmed.isEmpty) {
+                                          return 'Price is required.';
+                                        }
+                                        final parsed = double.tryParse(trimmed);
+                                        if (parsed == null) {
+                                          return 'Enter a valid number.';
+                                        }
+                                        if (parsed < 0) {
+                                          return 'Price cannot be negative.';
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                  ),
+                                  FocusTraversalOrder(
+                                    order: const NumericFocusOrder(3),
+                                    child: NewQuantity(
+                                      controller: _quantityController,
+                                      validator: (value) {
+                                        final trimmed = value?.trim() ?? '';
+                                        if (trimmed.isEmpty) {
+                                          return 'Quantity is required.';
+                                        }
+                                        final parsed = int.tryParse(trimmed);
+                                        if (parsed == null || parsed <= 0) {
+                                          return 'Enter a valid positive integer.';
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (locationOptions.isNotEmpty) ...[
+                              const Divider(height: 28),
+                              EditorSectionBlock(
+                                title: 'Location',
+                                subtitle:
+                                    'Place the item where you expect to find it.',
+                                child: FocusTraversalOrder(
+                                  order: const NumericFocusOrder(4),
+                                  child: LocationChoice(
+                                    options: locationOptions,
+                                    value: _location ?? locationOptions.first,
+                                    onChanged: (value) =>
+                                        setState(() => _location = value),
+                                  ),
+                                ),
+                              ),
+                            ],
+                            if (statusOptions.isNotEmpty) ...[
+                              const Divider(height: 28),
+                              EditorSectionBlock(
+                                title: 'Status',
+                                subtitle:
+                                    'Mark whether the item is active, stored, or needs attention.',
+                                child: FocusTraversalOrder(
+                                  order: const NumericFocusOrder(5),
+                                  child: StatusChoice(
+                                    options: statusOptions,
+                                    value: _status ?? statusOptions.first,
+                                    onChanged: (value) =>
+                                        setState(() => _status = value),
+                                  ),
+                                ),
+                              ),
+                            ],
+                            if (tagRows.isNotEmpty) ...[
+                              const Divider(height: 28),
+                              EditorSectionBlock(
+                                title: 'Tags',
+                                subtitle:
+                                    'Use tags to make filtering and grouping easier later.',
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: tagRows,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      FilledButton.icon(
+                        onPressed: _saveItem,
+                        icon: const Icon(Icons.check_circle_outline),
+                        label: const Text('Save Item'),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size.fromHeight(56),
+                          textStyle: theme.textTheme.labelLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
-                      if (locationOptions.isNotEmpty) ...[
-                        const SizedBox(height: 12),
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: FocusTraversalOrder(
-                              order: const NumericFocusOrder(4),
-                              child: LocationChoice(
-                                options: locationOptions,
-                                value: _location ?? locationOptions.first,
-                                onChanged: (value) =>
-                                    setState(() => _location = value),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                      if (statusOptions.isNotEmpty) ...[
-                        const SizedBox(height: 12),
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: FocusTraversalOrder(
-                              order: const NumericFocusOrder(5),
-                              child: StatusChoice(
-                                options: statusOptions,
-                                value: _status ?? statusOptions.first,
-                                onChanged: (value) =>
-                                    setState(() => _status = value),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                      if (tagRows.isNotEmpty) ...[
-                        const SizedBox(height: 12),
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                  ),
-                                  child: Text(
-                                    'Tags',
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.titleMedium,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                ...tagRows,
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ),
@@ -351,7 +354,10 @@ class NewName extends StatelessWidget {
         controller: controller,
         validator: validator,
         autovalidateMode: AutovalidateMode.onUserInteraction,
-        decoration: const InputDecoration(labelText: 'Name'),
+        decoration: const InputDecoration(
+          labelText: 'Name',
+          hintText: 'Desk lamp, camera, drill set...',
+        ),
       ),
     );
   }
@@ -378,7 +384,11 @@ class NewPrice extends StatelessWidget {
         inputFormatters: <TextInputFormatter>[
           FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
         ],
-        decoration: const InputDecoration(labelText: 'Price'),
+        decoration: const InputDecoration(
+          labelText: 'Price',
+          prefixText: '\$',
+          hintText: '0.00',
+        ),
       ),
     );
   }
@@ -405,7 +415,7 @@ class NewQuantity extends StatelessWidget {
         inputFormatters: <TextInputFormatter>[
           FilteringTextInputFormatter.allow(RegExp(r'^[1-9]\d*$')),
         ],
-        decoration: const InputDecoration(labelText: 'Quantity'),
+        decoration: const InputDecoration(labelText: 'Quantity', hintText: '1'),
       ),
     );
   }
@@ -429,8 +439,8 @@ class LocationChoice extends StatelessWidget {
         ? value
         : (options.isNotEmpty ? options.first : value);
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
       child: Semantics(
         container: true,
         label: 'Item location',
@@ -475,8 +485,8 @@ class StatusChoice extends StatelessWidget {
         ? value
         : (options.isNotEmpty ? options.first : value);
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
       child: Semantics(
         container: true,
         label: 'Item status',
@@ -524,12 +534,12 @@ class TagSelectorRow extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(tagName, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -557,13 +567,15 @@ class TagSelectorRow extends StatelessWidget {
 }
 
 class ImageUploaderScreen extends StatefulWidget {
-  final String initialImagePath;
-  final ValueChanged<String> onImageSelected;
+  final List<String> initialImagePaths;
+  final ValueChanged<List<String>> onImagesChanged;
+  final bool useStandaloneChrome;
 
   const ImageUploaderScreen({
     super.key,
-    required this.initialImagePath,
-    required this.onImageSelected,
+    required this.initialImagePaths,
+    required this.onImagesChanged,
+    this.useStandaloneChrome = true,
   });
 
   @override
@@ -571,38 +583,82 @@ class ImageUploaderScreen extends StatefulWidget {
 }
 
 class _ImageUploaderScreenState extends State<ImageUploaderScreen> {
-  Uint8List? _savedImageBytes;
+  final List<Uint8List?> _previewBytes = <Uint8List?>[];
+  List<String> _imagePaths = <String>[];
   final ImagePicker _picker = ImagePicker();
 
-  void _removeImage() {
-    widget.onImageSelected('');
+  void _removeImageAt(int index) {
+    if (index < 0 || index >= _imagePaths.length) {
+      return;
+    }
+
     setState(() {
-      _savedImageBytes = null;
+      _imagePaths.removeAt(index);
+      _previewBytes.removeAt(index);
     });
+
+    widget.onImagesChanged(List<String>.from(_imagePaths));
+  }
+
+  void _setPrimaryImage(int index) {
+    if (index <= 0 || index >= _imagePaths.length) {
+      return;
+    }
+
+    setState(() {
+      final path = _imagePaths.removeAt(index);
+      final preview = _previewBytes.removeAt(index);
+      _imagePaths.insert(0, path);
+      _previewBytes.insert(0, preview);
+    });
+
+    widget.onImagesChanged(List<String>.from(_imagePaths));
   }
 
   @override
   void initState() {
     super.initState();
-    unawaited(_syncImage(widget.initialImagePath));
+    unawaited(_syncImages(widget.initialImagePaths));
   }
 
   @override
   void didUpdateWidget(covariant ImageUploaderScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.initialImagePath != widget.initialImagePath) {
-      unawaited(_syncImage(widget.initialImagePath));
+    if (!_sameImages(oldWidget.initialImagePaths, widget.initialImagePaths)) {
+      unawaited(_syncImages(widget.initialImagePaths));
     }
   }
 
-  Future<void> _syncImage(String imagePath) async {
-    final bytes = await _loadPreviewBytes(imagePath);
+  bool _sameImages(List<String> left, List<String> right) {
+    if (left.length != right.length) {
+      return false;
+    }
+
+    for (var index = 0; index < left.length; index++) {
+      if (left[index] != right[index]) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  Future<void> _syncImages(List<String> imagePaths) async {
+    final normalized = imagePaths
+        .map((path) => path.trim())
+        .where((path) => path.isNotEmpty)
+        .toList();
+    final bytes = await Future.wait(normalized.map(_loadPreviewBytes));
+
     if (!mounted) {
       return;
     }
 
     setState(() {
-      _savedImageBytes = bytes;
+      _imagePaths = normalized;
+      _previewBytes
+        ..clear()
+        ..addAll(bytes);
     });
   }
 
@@ -629,34 +685,55 @@ class _ImageUploaderScreenState extends State<ImageUploaderScreen> {
 
   Future<void> _pickAndSaveImage() async {
     try {
-      final XFile? pickedFile = await _picker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 85,
-      );
+      final pickedFiles = await _picker.pickMultiImage(imageQuality: 85);
 
-      if (pickedFile == null) {
+      if (pickedFiles.isEmpty) {
         return;
       }
 
-      final imageBytes = await pickedFile.readAsBytes();
-      if (imageBytes.isEmpty) {
-        throw Exception('Selected image is empty.');
+      final newPaths = <String>[];
+      final newPreviewBytes = <Uint8List?>[];
+
+      for (final pickedFile in pickedFiles) {
+        final imageBytes = await pickedFile.readAsBytes();
+        if (imageBytes.isEmpty) {
+          continue;
+        }
+
+        final encodedImage = encodeImageToDataUri(
+          imageBytes,
+          mimeType: pickedFile.mimeType,
+          path: pickedFile.path,
+        );
+
+        if (_imagePaths.contains(encodedImage) ||
+            newPaths.contains(encodedImage)) {
+          continue;
+        }
+
+        newPaths.add(encodedImage);
+        newPreviewBytes.add(imageBytes);
       }
 
-      final encodedImage = encodeImageToDataUri(
-        imageBytes,
-        mimeType: pickedFile.mimeType,
-        path: pickedFile.path,
-      );
+      if (newPaths.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No new images were added.')),
+          );
+        }
+        return;
+      }
 
-      widget.onImageSelected(encodedImage);
+      final updatedPaths = List<String>.from(_imagePaths)..addAll(newPaths);
+      widget.onImagesChanged(updatedPaths);
 
       if (!mounted) {
         return;
       }
 
       setState(() {
-        _savedImageBytes = imageBytes;
+        _imagePaths = updatedPaths;
+        _previewBytes.addAll(newPreviewBytes);
       });
     } catch (e) {
       if (mounted) {
@@ -670,9 +747,11 @@ class _ImageUploaderScreenState extends State<ImageUploaderScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final hasImage =
-        widget.initialImagePath.isNotEmpty ||
-        (_savedImageBytes?.isNotEmpty ?? false);
+    final colorScheme = theme.colorScheme;
+    final hasImages = _imagePaths.isNotEmpty;
+    final primaryPreview = _previewBytes.isNotEmpty
+        ? _previewBytes.first
+        : null;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -681,50 +760,329 @@ class _ImageUploaderScreenState extends State<ImageUploaderScreen> {
             .toDouble();
 
         return Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(widget.useStandaloneChrome ? 4 : 0),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: previewSize,
-                height: previewSize,
+                width: double.infinity,
+                padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: theme.colorScheme.outlineVariant),
+                  borderRadius: BorderRadius.circular(24),
+                  gradient: widget.useStandaloneChrome
+                      ? LinearGradient(
+                          colors: [
+                            colorScheme.primaryContainer.withValues(alpha: 0.5),
+                            colorScheme.surfaceContainerHigh,
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        )
+                      : null,
                 ),
-                child: _savedImageBytes != null && _savedImageBytes!.isNotEmpty
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(11),
-                        child: Image.memory(
-                          _savedImageBytes!,
-                          fit: BoxFit.cover,
-                        ),
-                      )
-                    : Icon(
-                        Icons.image_outlined,
-                        size: 72,
-                        color: theme.colorScheme.outline,
+                child: Column(
+                  children: [
+                    Container(
+                      width: previewSize,
+                      height: previewSize,
+                      decoration: BoxDecoration(
+                        color: colorScheme.surface,
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(color: colorScheme.outlineVariant),
                       ),
+                      child: primaryPreview != null && primaryPreview.isNotEmpty
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(21),
+                              child: Image.memory(
+                                primaryPreview,
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                          : Icon(
+                              Icons.image_outlined,
+                              size: 72,
+                              color: colorScheme.outline,
+                            ),
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      onPressed: _pickAndSaveImage,
+                      icon: const Icon(Icons.upload_file),
+                      label: Text(hasImages ? 'Add Images' : 'Upload Images'),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: _pickAndSaveImage,
-                icon: const Icon(Icons.upload_file),
-                label: const Text('Upload Image'),
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  widget.useStandaloneChrome ? 4 : 0,
+                  14,
+                  widget.useStandaloneChrome ? 4 : 0,
+                  0,
+                ),
+                child: Text(
+                  hasImages
+                      ? 'Choose the main image with the star, or remove photos you no longer need.'
+                      : 'Add a few images to make the item easier to recognize later.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
               ),
-              if (hasImage) ...[
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: _removeImage,
-                  icon: const Icon(Icons.delete_outline),
-                  label: const Text('Remove Image'),
+              if (hasImages) ...[
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: List.generate(_imagePaths.length, (index) {
+                    final preview = _previewBytes[index];
+                    return SizedBox(
+                      width: 120,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Stack(
+                            children: [
+                              Container(
+                                width: 120,
+                                height: 120,
+                                decoration: BoxDecoration(
+                                  color: colorScheme.surfaceContainerHighest,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: index == 0
+                                        ? colorScheme.primary
+                                        : colorScheme.outlineVariant,
+                                    width: index == 0 ? 2 : 1,
+                                  ),
+                                ),
+                                child: preview != null && preview.isNotEmpty
+                                    ? ClipRRect(
+                                        borderRadius: BorderRadius.circular(11),
+                                        child: Image.memory(
+                                          preview,
+                                          fit: BoxFit.cover,
+                                        ),
+                                      )
+                                    : Icon(
+                                        Icons.image_outlined,
+                                        color: colorScheme.outline,
+                                      ),
+                              ),
+                              Positioned(
+                                top: 4,
+                                left: 4,
+                                child: IconButton.filledTonal(
+                                  onPressed: index == 0
+                                      ? null
+                                      : () => _setPrimaryImage(index),
+                                  icon: Icon(
+                                    index == 0 ? Icons.star : Icons.star_border,
+                                  ),
+                                  tooltip: index == 0
+                                      ? 'Primary image'
+                                      : 'Set as primary image',
+                                ),
+                              ),
+                              Positioned(
+                                top: 4,
+                                right: 4,
+                                child: IconButton.filledTonal(
+                                  onPressed: () => _removeImageAt(index),
+                                  icon: const Icon(Icons.delete_outline),
+                                  tooltip: 'Remove image',
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            index == 0 ? 'Primary' : 'Image ${index + 1}',
+                            style: theme.textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
                 ),
               ],
             ],
           ),
         );
       },
+    );
+  }
+}
+
+class EditorHeroCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final Widget? trailing;
+  final Widget? child;
+
+  const EditorHeroCard({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    this.trailing,
+    this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        gradient: LinearGradient(
+          colors: [
+            colorScheme.primaryContainer.withValues(alpha: 0.95),
+            colorScheme.surfaceContainerHigh,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.85),
+        ),
+      ),
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        runSpacing: 16,
+        children: [
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  subtitle,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ...[trailing, child].nonNulls,
+        ],
+      ),
+    );
+  }
+}
+
+class EditorFormSurface extends StatelessWidget {
+  final Widget child;
+
+  const EditorFormSurface({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: colorScheme.outlineVariant),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.shadow.withValues(alpha: 0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
+
+class EditorSectionBlock extends StatelessWidget {
+  final String title;
+  final String? subtitle;
+  final Widget child;
+
+  const EditorSectionBlock({
+    super.key,
+    required this.title,
+    this.subtitle,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          if (subtitle != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              subtitle!,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+          const SizedBox(height: 10),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class EditorSummaryPill extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const EditorSummaryPill({super.key, required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: colorScheme.surface.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 18, color: colorScheme.primary),
+          const SizedBox(width: 8),
+          Text(label, style: theme.textTheme.labelLarge),
+        ],
+      ),
     );
   }
 }

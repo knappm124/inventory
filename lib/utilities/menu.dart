@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import './collections.dart';
 import './edittag.dart';
 import './pdf.dart';
@@ -17,10 +18,30 @@ class MenuItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final icon = switch (name) {
+      'Locations' => Icons.place_outlined,
+      'Status' => Icons.label_important_outline,
+      'Tags' => Icons.sell_outlined,
+      'Export' => Icons.picture_as_pdf_outlined,
+      _ => Icons.chevron_right,
+    };
+
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-      minVerticalPadding: 12,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      minVerticalPadding: 14,
+      leading: Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          color: Theme.of(
+            context,
+          ).colorScheme.primaryContainer.withValues(alpha: 0.55),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Icon(icon, color: Theme.of(context).colorScheme.primary),
+      ),
       title: Text(name),
+      subtitle: Text(_menuSubtitle(name)),
       trailing: const Icon(Icons.chevron_right),
       onTap: () => Navigator.push(
         context,
@@ -30,6 +51,21 @@ class MenuItem extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _menuSubtitle(String name) {
+    switch (name) {
+      case 'Locations':
+        return 'Manage where items are stored.';
+      case 'Status':
+        return 'Adjust item lifecycle states.';
+      case 'Tags':
+        return 'Edit filtering and organization tags.';
+      case 'Export':
+        return 'Generate a PDF from the current inventory view.';
+      default:
+        return '';
+    }
   }
 }
 
@@ -278,14 +314,52 @@ class _EditorState extends State<Editor> {
       case "Export":
         return Scaffold(
           appBar: AppBar(title: const Text('Export to PDF')),
-          body: Center(
-            child: ElevatedButton(
-              onPressed: () {
-                PdfGenerator(
-                  widget.filteredItems ?? widget.c.items,
-                ).generatePdf();
-              },
-              child: const Text('Export to PDF'),
+          body: SafeArea(
+            child: Padding(
+              padding: _listContentPadding(context),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _PanelHero(
+                    title: 'Export inventory',
+                    subtitle:
+                        'Create a PDF snapshot of the current inventory view for sharing, printing, or backup.',
+                    trailingLabel:
+                        '${(widget.filteredItems ?? widget.c.items).length} items',
+                    trailingIcon: Icons.picture_as_pdf_outlined,
+                  ),
+                  const SizedBox(height: 12),
+                  _PanelCard(
+                    child: Padding(
+                      padding: const EdgeInsets.all(18),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'PDF Export',
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'This uses the current inventory selection, including any active filters from the home screen.',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          const SizedBox(height: 16),
+                          FilledButton.icon(
+                            onPressed: () {
+                              PdfGenerator(
+                                widget.filteredItems ?? widget.c.items,
+                              ).generatePdf();
+                            },
+                            icon: const Icon(Icons.download_outlined),
+                            label: const Text('Export to PDF'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -301,77 +375,107 @@ class _EditorState extends State<Editor> {
             child: ListView(
               padding: _listContentPadding(context),
               children: [
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Column(
-                      children: [
-                        for (Tag t in tags)
-                          ListTile(
-                            title: Text(t.getName()),
-                            trailing: Wrap(
-                              spacing: 4,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.edit),
-                                  tooltip: 'Edit tag',
-                                  constraints: const BoxConstraints(
-                                    minWidth: 48,
-                                    minHeight: 48,
-                                  ),
-                                  onPressed: () async {
-                                    await Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => EditTag(
-                                          tag: t.getName(),
-                                          collections: widget.c,
-                                        ),
-                                      ),
-                                    );
-                                    if (!mounted) {
-                                      return;
-                                    }
-                                    setState(() {});
-                                  },
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.delete),
-                                  tooltip: 'Delete tag',
-                                  constraints: const BoxConstraints(
-                                    minWidth: 48,
-                                    minHeight: 48,
-                                  ),
-                                  onPressed: () => _removeTag(t.getName()),
-                                ),
-                              ],
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
+                _PanelHero(
+                  title: 'Manage tags',
+                  subtitle:
+                      'Keep item classification tidy so filtering and grouping stay useful.',
+                  trailingLabel: '${tags.length} tags',
+                  trailingIcon: Icons.sell_outlined,
                 ),
                 const SizedBox(height: 12),
-                Card(
+                _PanelCard(
+                  child: tags.isEmpty
+                      ? const ListTile(
+                          title: Text('No tags yet'),
+                          subtitle: Text('Add your first tag below.'),
+                        )
+                      : Column(
+                          children: [
+                            for (final t in tags)
+                              ListTile(
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 4,
+                                ),
+                                leading: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .primaryContainer
+                                        .withValues(alpha: 0.5),
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: Icon(
+                                    Icons.sell_outlined,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                  ),
+                                ),
+                                title: Text(t.getName()),
+                                trailing: Wrap(
+                                  spacing: 6,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.edit_outlined),
+                                      tooltip: 'Edit tag',
+                                      onPressed: () async {
+                                        await Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => EditTag(
+                                              tag: t.getName(),
+                                              collections: widget.c,
+                                            ),
+                                          ),
+                                        );
+                                        if (!mounted) {
+                                          return;
+                                        }
+                                        setState(() {});
+                                      },
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_outline),
+                                      tooltip: 'Delete tag',
+                                      onPressed: () => _removeTag(t.getName()),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
+                ),
+                const SizedBox(height: 12),
+                _PanelCard(
                   child: Padding(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(16),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Text(
+                          'Add Tag',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 8),
                         TextFormField(
                           controller: controller,
                           validator: widget.validator,
                           autovalidateMode: AutovalidateMode.onUserInteraction,
                           textInputAction: TextInputAction.done,
                           onFieldSubmitted: (_) => _submitTag(),
-                          decoration: const InputDecoration(labelText: 'Name'),
-                        ),
-                        const SizedBox(height: 10),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: FilledButton(
-                            onPressed: _submitTag,
-                            child: const Text("Add Tag"),
+                          decoration: const InputDecoration(
+                            labelText: 'Name',
+                            hintText: 'Office, Camera, Seasonal...',
                           ),
+                        ),
+                        const SizedBox(height: 12),
+                        FilledButton.icon(
+                          onPressed: _submitTag,
+                          icon: const Icon(Icons.add),
+                          label: const Text('Add Tag'),
                         ),
                       ],
                     ),
@@ -499,7 +603,15 @@ class _MenuState extends State<Menu> {
               12 + mediaQuery.padding.bottom + mediaQuery.viewInsets.bottom,
             ),
             children: [
-              Card(
+              _PanelHero(
+                title: 'Settings',
+                subtitle:
+                    'Adjust inventory structure, tag management, export tools, and stock thresholds from one place.',
+                trailingLabel: 'Threshold $_lowStockThreshold',
+                trailingIcon: Icons.tune,
+              ),
+              const SizedBox(height: 12),
+              _PanelCard(
                 child: Column(
                   children: [
                     FocusTraversalOrder(
@@ -507,7 +619,7 @@ class _MenuState extends State<Menu> {
                       child: MenuItem(
                         c: widget.c,
                         filteredItems: widget.filteredItems,
-                        name: "Locations",
+                        name: 'Locations',
                       ),
                     ),
                     const Divider(height: 1),
@@ -516,7 +628,7 @@ class _MenuState extends State<Menu> {
                       child: MenuItem(
                         c: widget.c,
                         filteredItems: widget.filteredItems,
-                        name: "Status",
+                        name: 'Status',
                       ),
                     ),
                     const Divider(height: 1),
@@ -525,7 +637,7 @@ class _MenuState extends State<Menu> {
                       child: MenuItem(
                         c: widget.c,
                         filteredItems: widget.filteredItems,
-                        name: "Tags",
+                        name: 'Tags',
                       ),
                     ),
                     const Divider(height: 1),
@@ -533,12 +645,30 @@ class _MenuState extends State<Menu> {
                       order: const NumericFocusOrder(4),
                       child: ListTile(
                         contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
+                          horizontal: 14,
+                          vertical: 4,
                         ),
-                        minVerticalPadding: 12,
+                        minVerticalPadding: 14,
+                        leading: Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .primaryContainer
+                                .withValues(alpha: 0.55),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Icon(
+                            Icons.tune,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
                         title: const Text('Low Stock Threshold'),
-                        subtitle: Text('Current: $_lowStockThreshold'),
-                        trailing: const Icon(Icons.tune),
+                        subtitle: Text(
+                          'Current: $_lowStockThreshold items remaining',
+                        ),
+                        trailing: const Icon(Icons.chevron_right),
                         onTap: _editLowStockThreshold,
                       ),
                     ),
@@ -548,7 +678,7 @@ class _MenuState extends State<Menu> {
                       child: MenuItem(
                         c: widget.c,
                         filteredItems: widget.filteredItems,
-                        name: "Export",
+                        name: 'Export',
                       ),
                     ),
                   ],
@@ -616,16 +746,46 @@ class _OptionEditorBodyState extends State<_OptionEditorBody> {
       child: ListView(
         padding: _listContentPadding(context),
         children: [
-          Card(
+          _PanelHero(
+            title: widget.name,
+            subtitle:
+                'Review, rename, or remove entries, then add new ones below.',
+            trailingLabel: '${sortedOptions.length} total',
+            trailingIcon: Icons.list_alt_outlined,
+          ),
+          const SizedBox(height: 12),
+          _PanelCard(
             child: sortedOptions.isEmpty
-                ? const ListTile(title: Text('No options yet'))
+                ? const ListTile(
+                    title: Text('No options yet'),
+                    subtitle: Text('Add the first option below.'),
+                  )
                 : Column(
                     children: [
-                      for (String option in sortedOptions)
+                      for (final option in sortedOptions)
                         ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 4,
+                          ),
+                          leading: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .primaryContainer
+                                  .withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Icon(
+                              Icons.circle_outlined,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
                           title: Text(option),
                           trailing: Wrap(
-                            spacing: 4,
+                            spacing: 6,
                             children: [
                               if (widget.onRenameOption != null)
                                 IconButton(
@@ -633,21 +793,13 @@ class _OptionEditorBodyState extends State<_OptionEditorBody> {
                                     Icons.drive_file_rename_outline,
                                   ),
                                   tooltip: 'Rename option',
-                                  constraints: const BoxConstraints(
-                                    minWidth: 48,
-                                    minHeight: 48,
-                                  ),
                                   onPressed: () {
                                     widget.onRenameOption?.call(option);
                                   },
                                 ),
                               IconButton(
-                                icon: const Icon(Icons.delete),
+                                icon: const Icon(Icons.delete_outline),
                                 tooltip: 'Delete option',
-                                constraints: const BoxConstraints(
-                                  minWidth: 48,
-                                  minHeight: 48,
-                                ),
                                 onPressed: () => widget.onRemoveOption(option),
                               ),
                             ],
@@ -657,26 +809,139 @@ class _OptionEditorBodyState extends State<_OptionEditorBody> {
                   ),
           ),
           const SizedBox(height: 12),
-          Card(
+          _PanelCard(
             child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _controller,
-                      decoration: const InputDecoration(labelText: 'Name'),
-                      onSubmitted: (_) => _addOption(),
-                    ),
+                  Text(
+                    'Add ${widget.name.substring(0, widget.name.length - 1)}',
+                    style: Theme.of(context).textTheme.titleLarge,
                   ),
-                  const SizedBox(width: 10),
-                  FilledButton(onPressed: _addOption, child: const Text('Add')),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _controller,
+                    decoration: const InputDecoration(labelText: 'Name'),
+                    onSubmitted: (_) => _addOption(),
+                  ),
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                    onPressed: _addOption,
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add'),
+                  ),
                 ],
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _PanelHero extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final String trailingLabel;
+  final IconData trailingIcon;
+
+  const _PanelHero({
+    required this.title,
+    required this.subtitle,
+    required this.trailingLabel,
+    required this.trailingIcon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        gradient: LinearGradient(
+          colors: [
+            colorScheme.primaryContainer.withValues(alpha: 0.95),
+            colorScheme.surfaceContainerHigh,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.85),
+        ),
+      ),
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        runSpacing: 16,
+        children: [
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  subtitle,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: colorScheme.surface.withValues(alpha: 0.72),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(trailingIcon, size: 18, color: colorScheme.primary),
+                const SizedBox(width: 8),
+                Text(trailingLabel, style: theme.textTheme.labelLarge),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PanelCard extends StatelessWidget {
+  final Widget child;
+
+  const _PanelCard({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Material(
+      color: colorScheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(28),
+        side: BorderSide(color: colorScheme.outlineVariant),
+      ),
+      elevation: 0,
+      shadowColor: colorScheme.shadow.withValues(alpha: 0.04),
+      clipBehavior: Clip.antiAlias,
+      child: child,
     );
   }
 }

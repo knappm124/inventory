@@ -219,12 +219,28 @@ class _FilterState extends State<Filter> {
     });
   }
 
+  void _resetFilters() {
+    setState(() {
+      status = null;
+      location = null;
+      lowStockOnly = false;
+      tagFilters = {};
+      _currentRangeValues = RangeValues(0, maxPrice);
+      final criteria = _buildCriteria();
+      filtered = criteria.apply(c.items, maxPrice);
+      widget.onCriteriaChanged(criteria);
+      widget.onFilterChanged(filtered);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final statusOptions = c.getAllStatuses().toList()..sort();
     final locationOptions = c.getAllLocations().toList()..sort();
     final sortedTags = widget.c.tags.toList()
       ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final selectedStatus = status != null && statusOptions.contains(status)
         ? <String>{status!}
         : <String>{};
@@ -232,33 +248,87 @@ class _FilterState extends State<Filter> {
         location != null && locationOptions.contains(location)
         ? <String>{location!}
         : <String>{};
+    final hasActiveFilters = _buildCriteria().hasActiveFilters;
     final sectionTitleStyle = Theme.of(context).textTheme.titleSmall;
 
     return Material(
+      color: colorScheme.surface,
       child: ListView(
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 20),
         children: [
-          ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-            title: Text('Filters', style: Theme.of(context).textTheme.titleLarge),
-            subtitle: const Text('Narrow down your inventory list'),
-            trailing: IconButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              tooltip: 'Close filters',
-              icon: const Icon(Icons.close),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(28),
+              gradient: LinearGradient(
+                colors: [
+                  colorScheme.primaryContainer.withValues(alpha: 0.95),
+                  colorScheme.surfaceContainerHigh,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              border: Border.all(
+                color: colorScheme.outlineVariant.withValues(alpha: 0.85),
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Filters',
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Narrow down your inventory list and focus on the items you need right now.',
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    if (hasActiveFilters)
+                      TextButton.icon(
+                        onPressed: _resetFilters,
+                        icon: const Icon(Icons.restart_alt),
+                        label: const Text('Reset'),
+                      ),
+                    if (hasActiveFilters) const SizedBox(height: 6),
+                    IconButton.filledTonal(
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      tooltip: 'Close filters',
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 6),
           if (statusOptions.isNotEmpty) ...[
-            Card(
+            _FilterSectionCard(
+              title: 'Status',
               child: Padding(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("Status", style: sectionTitleStyle),
                     const SizedBox(height: 8),
                     Semantics(
                       container: true,
@@ -293,13 +363,13 @@ class _FilterState extends State<Filter> {
           ],
           if (locationOptions.isNotEmpty) ...[
             const SizedBox(height: 8),
-            Card(
+            _FilterSectionCard(
+              title: 'Location',
               child: Padding(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("Location", style: sectionTitleStyle),
                     const SizedBox(height: 8),
                     Semantics(
                       container: true,
@@ -333,11 +403,15 @@ class _FilterState extends State<Filter> {
             ),
           ],
           const SizedBox(height: 8),
-          Card(
+          _FilterSectionCard(
+            title: 'Stock & Price',
             child: Column(
               children: [
                 SwitchListTile(
-                  title: Text("Low stock only (<= $lowStockThreshold)"),
+                  title: Text('Low stock only (<= $lowStockThreshold)'),
+                  subtitle: const Text(
+                    'Show only items at or below your stock threshold.',
+                  ),
                   value: lowStockOnly,
                   onChanged: (value) {
                     setState(() {
@@ -351,7 +425,12 @@ class _FilterState extends State<Filter> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("Price", style: sectionTitleStyle),
+                      Text('Price', style: sectionTitleStyle),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Set a price band to limit the results.',
+                        style: theme.textTheme.bodySmall,
+                      ),
                       RangeSlider(
                         values: _currentRangeValues,
                         max: maxPrice,
@@ -377,11 +456,12 @@ class _FilterState extends State<Filter> {
             if (tag.options != null && tag.options!.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
-                child: Card(
+                child: _FilterSectionCard(
+                  title: tag.name,
                   child: Padding(
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.all(16),
                     child: _buildChipSection(
-                      title: tag.name,
+                      title: 'Options',
                       options: (tag.options!.toList()..sort()),
                       selected: tagFilters[tag.name] ?? {},
                       onChanged: (newValue) {
@@ -395,6 +475,49 @@ class _FilterState extends State<Filter> {
                   ),
                 ),
               ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FilterSectionCard extends StatelessWidget {
+  final String title;
+  final Widget child;
+
+  const _FilterSectionCard({required this.title, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: colorScheme.outlineVariant),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.shadow.withValues(alpha: 0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
+            child: Text(
+              title,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          child,
         ],
       ),
     );

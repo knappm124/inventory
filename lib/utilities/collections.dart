@@ -953,6 +953,7 @@ class Item {
   String? _location;
   String? _status;
   String? _img;
+  List<String> _images;
   Map<String, Set<String>>? _tags;
 
   Item(
@@ -963,8 +964,31 @@ class Item {
     this._location,
     this._status,
     this._img,
+    List<String>? images,
     this._tags,
-  );
+  ) : _images = _normalizeImages(primaryImage: _img, images: images);
+
+  static List<String> _normalizeImages({
+    String? primaryImage,
+    List<String>? images,
+  }) {
+    final normalized = <String>[];
+
+    void addImage(String? image) {
+      final trimmed = image?.trim() ?? '';
+      if (trimmed.isEmpty || normalized.contains(trimmed)) {
+        return;
+      }
+      normalized.add(trimmed);
+    }
+
+    addImage(primaryImage);
+    for (final image in images ?? const <String>[]) {
+      addImage(image);
+    }
+
+    return normalized;
+  }
 
   Map<String, dynamic> toJson() {
     final sortedTagKeys = _tags?.keys.toList() ?? [];
@@ -983,6 +1007,7 @@ class Item {
       'location': _location,
       'status': _status,
       'img': _img,
+      'images': _images,
       'tags': normalizedTags,
     };
   }
@@ -999,6 +1024,11 @@ class Item {
             ),
           )
         : <String, Set<String>>{};
+    final rawImages = json['images'];
+    final images = rawImages is List
+        ? rawImages.map((entry) => entry.toString()).toList()
+        : null;
+    final primaryImage = json['img'] as String?;
 
     return Item(
       json['id'] as String,
@@ -1009,7 +1039,8 @@ class Item {
           : int.tryParse(json['quantity']?.toString() ?? '') ?? 1,
       json['location'] as String?,
       json['status'] as String?,
-      json['img'] as String?,
+      primaryImage,
+      images,
       tags,
     );
   }
@@ -1045,6 +1076,7 @@ class Item {
   String? get location => _location;
   String? get status => _status;
   String? get img => _img;
+  List<String> get images => List<String>.unmodifiable(_images);
   Map<String, Set<String>>? get tags => _tags;
 
   void setName(String name) {
@@ -1069,6 +1101,12 @@ class Item {
 
   void setImg(String? img) {
     _img = img;
+    _images = _normalizeImages(primaryImage: _img, images: _images);
+  }
+
+  void setImages(List<String>? images) {
+    _images = _normalizeImages(primaryImage: _img, images: images);
+    _img = _images.isEmpty ? null : _images.first;
   }
 
   void setTags(Map<String, Set<String>>? tags) {
