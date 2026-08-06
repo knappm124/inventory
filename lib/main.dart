@@ -676,15 +676,19 @@ class Scroll extends StatefulWidget {
   State<Scroll> createState() => _ScrollState();
 }
 
-enum SortOption { nameAsc, priceLowToHigh, priceHighToLow, statusAsc }
+enum SortField { name, price, status }
 
 class _ScrollState extends State<Scroll> {
   static const String _searchPrefKey = 'inventory.searchQuery';
   static const String _sortPrefKey = 'inventory.sortOption';
+  static const String _sortFieldPrefKey = 'inventory.sortField';
+  static const String _sortAscendingPrefKey = 'inventory.sortAscending';
 
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
-  SortOption _sortOption = SortOption.nameAsc;
+  SortField _sortField = SortField.name;
+  bool _sortAscending = true;
+  bool _showSortArrow = false;
 
   @override
   void initState() {
@@ -701,30 +705,58 @@ class _ScrollState extends State<Scroll> {
   Future<void> _restoreListPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     final savedSearch = prefs.getString(_searchPrefKey) ?? '';
-    final savedSortIndex = prefs.getInt(_sortPrefKey);
+    final savedSortFieldIndex = prefs.getInt(_sortFieldPrefKey);
+    final savedSortAscending = prefs.getBool(_sortAscendingPrefKey);
+    final legacySortIndex = prefs.getInt(_sortPrefKey);
 
     if (!mounted) {
       return;
     }
 
-    final savedSort =
-        savedSortIndex != null &&
-            savedSortIndex >= 0 &&
-            savedSortIndex < SortOption.values.length
-        ? SortOption.values[savedSortIndex]
-        : SortOption.nameAsc;
+    SortField restoredSortField = SortField.name;
+    bool restoredSortAscending = true;
+
+    if (savedSortFieldIndex != null &&
+        savedSortFieldIndex >= 0 &&
+        savedSortFieldIndex < SortField.values.length) {
+      restoredSortField = SortField.values[savedSortFieldIndex];
+      restoredSortAscending = savedSortAscending ?? true;
+    } else {
+      switch (legacySortIndex) {
+        case 1:
+          restoredSortField = SortField.price;
+          restoredSortAscending = true;
+          break;
+        case 2:
+          restoredSortField = SortField.price;
+          restoredSortAscending = false;
+          break;
+        case 3:
+          restoredSortField = SortField.status;
+          restoredSortAscending = true;
+          break;
+        case 0:
+        default:
+          restoredSortField = SortField.name;
+          restoredSortAscending = true;
+          break;
+      }
+    }
 
     setState(() {
       _searchQuery = savedSearch;
       _searchController.text = savedSearch;
-      _sortOption = savedSort;
+      _sortField = restoredSortField;
+      _sortAscending = restoredSortAscending;
+      _showSortArrow = false;
     });
   }
 
   Future<void> _persistListPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_searchPrefKey, _searchQuery);
-    await prefs.setInt(_sortPrefKey, _sortOption.index);
+    await prefs.setInt(_sortFieldPrefKey, _sortField.index);
+    await prefs.setBool(_sortAscendingPrefKey, _sortAscending);
   }
 
   void _clearSearch() {
@@ -749,49 +781,71 @@ class _ScrollState extends State<Scroll> {
                 (item.status?.toLowerCase().contains(query) ?? false);
           }).toList();
 
-    switch (_sortOption) {
-      case SortOption.nameAsc:
-        filteredBySearch.sort((a, b) => a.name.compareTo(b.name));
-        return filteredBySearch;
-      case SortOption.priceLowToHigh:
-        filteredBySearch.sort((a, b) => a.price.compareTo(b.price));
-        return filteredBySearch;
-      case SortOption.priceHighToLow:
-        filteredBySearch.sort((a, b) => b.price.compareTo(a.price));
-        return filteredBySearch;
-      case SortOption.statusAsc:
-        filteredBySearch.sort(
-          (a, b) => (a.status ?? '').compareTo(b.status ?? ''),
-        );
-        return filteredBySearch;
+    int compareResult(Item a, Item b) {
+      switch (_sortField) {
+        case SortField.name:
+          return a.name.compareTo(b.name);
+        case SortField.price:
+          return a.price.compareTo(b.price);
+        case SortField.status:
+          return (a.status ?? '').compareTo(b.status ?? '');
+      }
+    }
+
+    filteredBySearch.sort((a, b) {
+      final result = compareResult(a, b);
+      return _sortAscending ? result : -result;
+    });
+    return filteredBySearch;
+  }
+
+  String _sortLabel(SortField field) {
+    switch (field) {
+      case SortField.name:
+        return 'Name';
+      case SortField.price:
+        return 'Price';
+      case SortField.status:
+        return 'Status';
     }
   }
 
-  String _sortLabel(SortOption option) {
-    switch (option) {
-      case SortOption.nameAsc:
-        return 'Name (A-Z)';
-      case SortOption.priceLowToHigh:
-        return 'Price (Low-High)';
-      case SortOption.priceHighToLow:
-        return 'Price (High-Low)';
-      case SortOption.statusAsc:
-        return 'Status (A-Z)';
-    }
+  void _toggleSort(SortField field) {
+    setState(() {
+      if (!_showSortArrow) {
+        _sortField = field;
+        _sortAscending = true;
+        _showSortArrow = true;
+      } else if (_sortField == field) {
+        _sortAscending = !_sortAscending;
+      } else {
+        _sortField = field;
+        _sortAscending = true;
+      }
+    });
+    unawaited(_persistListPreferences());
   }
 
-  Widget _buildSortChip(SortOption option) {
-    final selected = _sortOption == option;
+  Widget _buildSortChip(SortField field) {
+    final selected = _showSortArrow && _sortField == field;
+    final ascending = selected ? _sortAscending : true;
     return ChoiceChip(
-      label: Text(_sortLabel(option)),
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(_sortLabel(field)),
+          if (selected) ...[
+            const SizedBox(width: 6),
+            Icon(
+              ascending ? Icons.arrow_upward : Icons.arrow_downward,
+              size: 16,
+            ),
+          ],
+        ],
+      ),
       selected: selected,
       showCheckmark: false,
-      onSelected: (_) {
-        setState(() {
-          _sortOption = option;
-        });
-        unawaited(_persistListPreferences());
-      },
+      onSelected: (_) => _toggleSort(field),
     );
   }
 
@@ -919,40 +973,43 @@ class _ScrollState extends State<Scroll> {
                         ),
               ),
               SizedBox(height: isCompact ? 12 : 20),
-              Wrap(
-                spacing: isCompact ? 8 : 12,
-                runSpacing: isCompact ? 8 : 12,
-                children: [
-                  _buildMetricCard(
-                    context,
-                    label: 'Items',
-                    value: '$totalItems',
-                    icon: Icons.inventory_2_outlined,
-                    onTap: widget.onItemsTilePressed,
-                    semanticHint: 'Clears quick filters and shows all items.',
-                    compact: isCompact,
-                  ),
-                  _buildMetricCard(
-                    context,
-                    label: 'Low stock',
-                    value: '$lowStockItems',
-                    icon: Icons.warning_amber_outlined,
-                    accentColor: lowStockItems > 0
-                        ? colorScheme.tertiary
-                        : colorScheme.primary,
-                    isSelected: lowStockFilterActive,
-                    onTap: widget.onLowStockTilePressed,
-                    semanticHint: 'Toggles the low stock quick filter.',
-                    compact: isCompact,
-                  ),
-                  _buildMetricCard(
-                    context,
-                    label: 'Value',
-                    value: '\$${inventoryValue.toStringAsFixed(0)}',
-                    icon: Icons.paid_outlined,
-                    compact: isCompact,
-                  ),
-                ],
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildMetricCard(
+                      context,
+                      label: 'Items',
+                      value: '$totalItems',
+                      icon: Icons.inventory_2_outlined,
+                      onTap: widget.onItemsTilePressed,
+                      semanticHint: 'Clears quick filters and shows all items.',
+                      compact: isCompact,
+                    ),
+                    SizedBox(width: isCompact ? 8 : 12),
+                    _buildMetricCard(
+                      context,
+                      label: 'Low stock',
+                      value: '$lowStockItems',
+                      icon: Icons.warning_amber_outlined,
+                      accentColor: lowStockItems > 0
+                          ? colorScheme.tertiary
+                          : colorScheme.primary,
+                      isSelected: lowStockFilterActive,
+                      onTap: widget.onLowStockTilePressed,
+                      semanticHint: 'Toggles the low stock quick filter.',
+                      compact: isCompact,
+                    ),
+                    SizedBox(width: isCompact ? 8 : 12),
+                    _buildMetricCard(
+                      context,
+                      label: 'Value',
+                      value: '\$${inventoryValue.toStringAsFixed(0)}',
+                      icon: Icons.paid_outlined,
+                      compact: isCompact,
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -1157,7 +1214,7 @@ class _ScrollState extends State<Scroll> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final option in SortOption.values) _buildSortChip(option),
+              for (final field in SortField.values) _buildSortChip(field),
             ],
           ),
         ],
@@ -1374,7 +1431,7 @@ class _ScrollState extends State<Scroll> {
                     duration: const Duration(milliseconds: 180),
                     child: ListView.builder(
                       key: ValueKey(
-                        '${itemsToDisplay.length}-${_sortOption.name}-${_searchQuery.trim()}',
+                        '${itemsToDisplay.length}-${_sortField.name}-${_sortAscending}-${_searchQuery.trim()}',
                       ),
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
