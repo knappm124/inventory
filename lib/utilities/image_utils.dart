@@ -71,6 +71,8 @@ Widget buildInventoryImage({
   required double height,
   BoxFit fit = BoxFit.contain,
   Widget? placeholder,
+  String? semanticLabel,
+  bool excludeFromSemantics = false,
 }) {
   final fallback =
       placeholder ??
@@ -91,6 +93,8 @@ Widget buildInventoryImage({
       width: width,
       height: height,
       fit: fit,
+      semanticLabel: semanticLabel,
+      excludeFromSemantics: excludeFromSemantics,
       errorBuilder: (context, error, stackTrace) => fallback,
     );
   }
@@ -104,6 +108,8 @@ Widget buildInventoryImage({
       width: width,
       height: height,
       fit: fit,
+      semanticLabel: semanticLabel,
+      excludeFromSemantics: excludeFromSemantics,
       errorBuilder: (context, error, stackTrace) => fallback,
     );
   }
@@ -129,6 +135,8 @@ Widget buildInventoryImage({
         width: width,
         height: height,
         fit: fit,
+        semanticLabel: semanticLabel,
+        excludeFromSemantics: excludeFromSemantics,
         errorBuilder: (context, error, stackTrace) => fallback,
       );
     },
