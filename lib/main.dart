@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:logging/logging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+
 import 'utilities/collections.dart';
 import 'utilities/filter.dart';
 import 'utilities/itemwidgets.dart';
@@ -1431,7 +1432,7 @@ class _ScrollState extends State<Scroll> {
                     duration: const Duration(milliseconds: 180),
                     child: ListView.builder(
                       key: ValueKey(
-                        '${itemsToDisplay.length}-${_sortField.name}-$_sortAscending-${_searchQuery.trim()}',
+                        '${itemsToDisplay.length}-${_sortField.name}-${_sortAscending}-${_searchQuery.trim()}',
                       ),
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
