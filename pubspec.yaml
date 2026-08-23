@@ -1,7 +1,7 @@
 name: inventory
-description: "A new Flutter project."
+description: "A lightweight app to track inventory locally."
 publish_to: 'none'
-version: 0.1.0+1
+version: 1.0.0
 
 environment:
   sdk: ^3.12.1
@@ -18,7 +18,6 @@ dependencies:
   pdf: ^3.10.1
   printing: ^5.10.0
   web: ^1.1.1
-  mongo_dart: ^0.10.9
   logging: ^1.3.0
 
 dev_dependencies:

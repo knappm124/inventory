@@ -7,17 +7,16 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:logging/logging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-
 import 'utilities/collections.dart';
 import 'utilities/filter.dart';
 import 'utilities/itemwidgets.dart';
 import 'utilities/menu.dart';
 import 'utilities/newitem.dart';
 
-ThemeData buildAppTheme() {
+ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
   final colorScheme = ColorScheme.fromSeed(
     seedColor: const Color(0xFF0E7490),
-    brightness: Brightness.light,
+    brightness: brightness,
   );
   final baseTextTheme = GoogleFonts.dmSansTextTheme();
   final sectionShape = RoundedRectangleBorder(
@@ -200,6 +199,7 @@ class MainApp extends StatefulWidget {
 
 class _MainAppState extends State<MainApp> {
   static const String _lowStockThresholdPrefKey = 'inventory.lowStockThreshold';
+  static const String _themeModePrefKey = 'inventory.themeMode';
 
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
@@ -208,6 +208,7 @@ class _MainAppState extends State<MainApp> {
   FilterCriteria? _filterCriteria;
   String? _loadErrorMessage;
   int _lowStockThreshold = FilterCriteria.defaultLowStockThreshold;
+  ThemeMode _themeMode = ThemeMode.system;
 
   @override
   void initState() {
@@ -226,6 +227,11 @@ class _MainAppState extends State<MainApp> {
       final savedLowStockThreshold =
           prefs.getInt(_lowStockThresholdPrefKey) ??
           FilterCriteria.defaultLowStockThreshold;
+      final savedThemeMode = switch (prefs.getString(_themeModePrefKey)) {
+        'light' => ThemeMode.light,
+        'dark' => ThemeMode.dark,
+        _ => ThemeMode.system,
+      };
 
       final loadedLocations = savedLocations.isEmpty
           ? _defaultLocations()
@@ -251,6 +257,7 @@ class _MainAppState extends State<MainApp> {
         _lowStockThreshold = savedLowStockThreshold > 0
             ? savedLowStockThreshold
             : FilterCriteria.defaultLowStockThreshold;
+        _themeMode = savedThemeMode;
         _collections = loadedCollections;
         _applyCurrentFilters();
       });
@@ -347,6 +354,8 @@ class _MainAppState extends State<MainApp> {
           filteredItems: _filteredItems,
           lowStockThreshold: _lowStockThreshold,
           onLowStockThresholdChanged: _onLowStockThresholdChanged,
+          themeMode: _themeMode,
+          onThemeModeChanged: _onThemeModeChanged,
         ),
       ),
     );
@@ -485,6 +494,19 @@ class _MainAppState extends State<MainApp> {
     });
   }
 
+  Future<void> _onThemeModeChanged(ThemeMode themeMode) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_themeModePrefKey, themeMode.name);
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _themeMode = themeMode;
+    });
+  }
+
   void _applyCurrentFilters() {
     if (_collections == null) {
       _filteredItems = null;
@@ -558,6 +580,8 @@ class _MainAppState extends State<MainApp> {
     if (_collections == null) {
       return MaterialApp(
         theme: buildAppTheme(),
+        darkTheme: buildAppTheme(brightness: Brightness.dark),
+        themeMode: _themeMode,
         home: Scaffold(
           appBar: AppBar(title: const Text('My Inventory')),
           body: Center(
@@ -583,6 +607,8 @@ class _MainAppState extends State<MainApp> {
 
     return MaterialApp(
       theme: buildAppTheme(),
+      darkTheme: buildAppTheme(brightness: Brightness.dark),
+      themeMode: _themeMode,
       navigatorKey: _navigatorKey,
       home: Scaffold(
         key: _scaffoldKey,
@@ -1432,7 +1458,7 @@ class _ScrollState extends State<Scroll> {
                     duration: const Duration(milliseconds: 180),
                     child: ListView.builder(
                       key: ValueKey(
-                        '${itemsToDisplay.length}-${_sortField.name}-${_sortAscending}-${_searchQuery.trim()}',
+                        '${itemsToDisplay.length}-${_sortField.name}-$_sortAscending-${_searchQuery.trim()}',
                       ),
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),

@@ -511,6 +511,8 @@ class Menu extends StatefulWidget {
   final List<Item>? filteredItems;
   final int lowStockThreshold;
   final ValueChanged<int> onLowStockThresholdChanged;
+  final ThemeMode themeMode;
+  final ValueChanged<ThemeMode> onThemeModeChanged;
 
   const Menu({
     super.key,
@@ -518,6 +520,8 @@ class Menu extends StatefulWidget {
     required this.filteredItems,
     required this.lowStockThreshold,
     required this.onLowStockThresholdChanged,
+    required this.themeMode,
+    required this.onThemeModeChanged,
   });
 
   @override
@@ -620,6 +624,54 @@ class _MenuState extends State<Menu> {
                         c: widget.c,
                         filteredItems: widget.filteredItems,
                         name: 'Locations',
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 4,
+                      ),
+                      minVerticalPadding: 14,
+                      leading: Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primaryContainer
+                              .withValues(alpha: 0.55),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Icon(
+                          Icons.dark_mode_outlined,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                      title: const Text('Appearance'),
+                      subtitle: const Text(
+                        'Choose light, dark, or system theme.',
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+                      child: SegmentedButton<ThemeMode>(
+                        segments: const [
+                          ButtonSegment(
+                            value: ThemeMode.system,
+                            label: Text('System'),
+                          ),
+                          ButtonSegment(
+                            value: ThemeMode.light,
+                            label: Text('Light'),
+                          ),
+                          ButtonSegment(
+                            value: ThemeMode.dark,
+                            label: Text('Dark'),
+                          ),
+                        ],
+                        selected: {widget.themeMode},
+                        onSelectionChanged: (selection) {
+                          widget.onThemeModeChanged(selection.first);
+                        },
                       ),
                     ),
                     const Divider(height: 1),
