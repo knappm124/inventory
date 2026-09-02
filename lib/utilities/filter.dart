@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:inventory/utilities/collections.dart';
+import 'collections.dart';
 
+/// An immutable snapshot of the inventory filters selected by the user.
 class FilterCriteria {
   static const int defaultLowStockThreshold = 5;
 
@@ -28,6 +29,7 @@ class FilterCriteria {
         tagFilters.values.any((values) => values.isNotEmpty);
   }
 
+  /// Returns items that match every active filter; tag options are alternatives within a tag.
   List<Item> apply(List<Item> items, double maxPrice) {
     final effectiveMaxPrice = maxPrice < 10 ? 10.0 : maxPrice;
     final range = priceRange ?? RangeValues(0, effectiveMaxPrice);
@@ -62,6 +64,7 @@ class FilterCriteria {
   }
 }
 
+/// Bottom-sheet editor that lets users build and apply [FilterCriteria].
 class Filter extends StatefulWidget {
   final Collections c;
   final ValueChanged<List<Item>> onFilterChanged;

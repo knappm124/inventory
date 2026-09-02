@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// Reads and writes inventory data, using local JSON files or browser storage.
 class FileMethods {
   static const String _itemsWebKey = 'items_json';
   static const String _tagsWebKey = 'tags_json';
@@ -146,6 +147,7 @@ class FileMethods {
     return file;
   }
 
+  /// Loads items, recovering from the backup and upgrading legacy records when needed.
   Future<List<Item>> readItems() async {
     if (kIsWeb) {
       final prefs = await SharedPreferences.getInstance();
@@ -535,6 +537,7 @@ class FileMethods {
   }
 }
 
+/// Owns the in-memory inventory and keeps related collections consistent on change.
 class Collections {
   List<Item> items;
   Set<Tag> tags;
@@ -945,6 +948,7 @@ class Collections {
   }
 }
 
+/// Inventory record with its quantity, location, images, status, and tag selections.
 class Item {
   String _id;
   String _name;
@@ -1069,6 +1073,15 @@ class Item {
     return (location == _location);
   }
 
+  List<String> getAllOptions(String tagName) {
+    for (var tag in _tags?.keys ?? []) {
+      if (tag == tagName) {
+        return _tags?[tag]?.toList() ?? [];
+      }
+    }
+    return [];
+  }
+
   String get id => _id;
   String get name => _name;
   double get price => _price;
@@ -1114,6 +1127,7 @@ class Item {
   }
 }
 
+/// A named grouping with optional values that can be assigned to inventory items.
 class Tag {
   String name;
   Set<String>? options;

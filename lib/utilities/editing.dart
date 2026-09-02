@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:inventory/utilities/newitem.dart';
+import 'newitem.dart';
 
 import 'collections.dart';
 
+/// Form screen that updates an existing item using the shared editor controls.
 class EditingItem extends StatefulWidget {
   final Item i;
   final Collections collections;

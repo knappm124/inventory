@@ -13,6 +13,7 @@ import 'utilities/itemwidgets.dart';
 import 'utilities/menu.dart';
 import 'utilities/newitem.dart';
 
+/// Creates the shared Material theme for both light and dark application modes.
 ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
   final colorScheme = ColorScheme.fromSeed(
     seedColor: const Color(0xFF0E7490),
@@ -39,6 +40,7 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
       titleLarge: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
       titleMedium: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
       labelLarge: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
+      bodyLarge: GoogleFonts.dmSans(color: colorScheme.onSurface),
       bodyMedium: GoogleFonts.dmSans(),
       bodySmall: GoogleFonts.dmSans(color: colorScheme.onSurface),
     ),
@@ -180,6 +182,7 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
   );
 }
 
+/// Initializes framework services before mounting the inventory application.
 Future<void> main() async {
   Logger.root.level = Level.ALL;
   WidgetsFlutterBinding.ensureInitialized();
@@ -190,6 +193,7 @@ Future<void> main() async {
   runApp(const MainApp());
 }
 
+/// The application root, responsible for loading and persisting global preferences.
 class MainApp extends StatefulWidget {
   const MainApp({super.key});
 
@@ -583,7 +587,7 @@ class _MainAppState extends State<MainApp> {
         darkTheme: buildAppTheme(brightness: Brightness.dark),
         themeMode: _themeMode,
         home: Scaffold(
-          appBar: AppBar(title: const Text('My Inventory')),
+          appBar: AppBar(title: const Text('Shelfwise')),
           body: Center(
             child: _loadErrorMessage == null
                 ? const CircularProgressIndicator()
@@ -614,7 +618,7 @@ class _MainAppState extends State<MainApp> {
         key: _scaffoldKey,
         appBar: AppBar(
           automaticallyImplyLeading: false,
-          title: const Text('My Inventory'),
+          title: const Text('Shelfwise'),
           actions: [
             IconButton(
               onPressed: () {
@@ -673,6 +677,7 @@ Set<Tag> _defaultTags() {
   return {};
 }
 
+/// The home inventory view, including search, sorting, summaries, and item rows.
 class Scroll extends StatefulWidget {
   final Collections collections;
   final List<Item>? filteredItems;

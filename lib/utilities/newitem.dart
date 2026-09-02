@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'collections.dart';
 import 'image_utils.dart';
 
+/// Form screen for creating an item and its associated metadata.
 class NewItem extends StatefulWidget {
   final Collections collections;
 
@@ -340,6 +341,7 @@ class _NewItemState extends State<NewItem> {
   }
 }
 
+/// Reusable validated text field for an item name.
 class NewName extends StatelessWidget {
   final TextEditingController controller;
   final String? Function(String?)? validator;
@@ -363,6 +365,7 @@ class NewName extends StatelessWidget {
   }
 }
 
+/// Reusable currency input with decimal validation.
 class NewPrice extends StatelessWidget {
   final TextEditingController controller;
   final String? Function(String?)? validator;
@@ -394,6 +397,7 @@ class NewPrice extends StatelessWidget {
   }
 }
 
+/// Reusable whole-number input for the number of items in stock.
 class NewQuantity extends StatelessWidget {
   final TextEditingController controller;
   final String? Function(String?)? validator;
@@ -421,6 +425,7 @@ class NewQuantity extends StatelessWidget {
   }
 }
 
+/// Choice chip for the single location assigned to an item.
 class LocationChoice extends StatelessWidget {
   final List<String> options;
   final String value;
@@ -467,6 +472,7 @@ class LocationChoice extends StatelessWidget {
   }
 }
 
+/// Choice chip for the single lifecycle status assigned to an item.
 class StatusChoice extends StatelessWidget {
   final List<String> options;
   final String value;
@@ -513,6 +519,7 @@ class StatusChoice extends StatelessWidget {
   }
 }
 
+/// Displays the available options for one tag and reports its selected values.
 class TagSelectorRow extends StatelessWidget {
   final String tagName;
   final List<String> options;
@@ -566,6 +573,7 @@ class TagSelectorRow extends StatelessWidget {
   }
 }
 
+/// Manages adding, ordering, previewing, and removing an item's images.
 class ImageUploaderScreen extends StatefulWidget {
   final List<String> initialImagePaths;
   final ValueChanged<List<String>> onImagesChanged;
@@ -914,6 +922,7 @@ class _ImageUploaderScreenState extends State<ImageUploaderScreen> {
   }
 }
 
+/// Header card shared by the create and edit item forms.
 class EditorHeroCard extends StatelessWidget {
   final String title;
   final String subtitle;
@@ -983,6 +992,7 @@ class EditorHeroCard extends StatelessWidget {
   }
 }
 
+/// Visual surface that groups a form region in the item editor.
 class EditorFormSurface extends StatelessWidget {
   final Widget child;
 
@@ -1013,6 +1023,7 @@ class EditorFormSurface extends StatelessWidget {
   }
 }
 
+/// Adds a labelled section around related item-editor controls.
 class EditorSectionBlock extends StatelessWidget {
   final String title;
   final String? subtitle;
@@ -1058,6 +1069,7 @@ class EditorSectionBlock extends StatelessWidget {
   }
 }
 
+/// Compact icon and label summary used in editor header cards.
 class EditorSummaryPill extends StatelessWidget {
   final IconData icon;
   final String label;

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import './collections.dart';
 import './edittag.dart';
 import './pdf.dart';
+import './csv.dart';
 
+/// Navigation tile that opens a metadata editor or the export screen.
 class MenuItem extends StatelessWidget {
   final Collections c;
   final List<Item>? filteredItems;
@@ -62,13 +65,72 @@ class MenuItem extends StatelessWidget {
       case 'Tags':
         return 'Edit filtering and organization tags.';
       case 'Export':
-        return 'Generate a PDF from the current inventory view.';
+        return 'Generate a PDF or CSV from the current inventory view.';
       default:
         return '';
     }
   }
 }
 
+/// Presents app information and links to the privacy policy.
+class AboutPage extends StatelessWidget {
+  static final Uri _privacyPolicyUri = Uri.parse(
+    'https://devbaby.com/privacy-policy',
+  );
+
+  const AboutPage({super.key});
+
+  Future<void> _openPrivacyPolicy(BuildContext context) async {
+    final launched = await launchUrl(
+      _privacyPolicyUri,
+      mode: LaunchMode.externalApplication,
+    );
+    if (!launched && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open the privacy policy.')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('About Shelfwise')),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            Text(
+              'Shelfwise',
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'A lightweight, private inventory tracker for your stuff.',
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Copyright (c) 2026 DevBaby. All rights reserved.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 24),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.privacy_tip_outlined),
+              title: const Text('Privacy Policy'),
+              subtitle: const Text('Read how Shelfwise handles your data.'),
+              trailing: const Icon(Icons.open_in_new),
+              onTap: () => _openPrivacyPolicy(context),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Routes management of locations, statuses, tags, and exports to their views.
 class Editor extends StatefulWidget {
   final String tagName;
   final Collections c;
@@ -354,6 +416,27 @@ class _EditorState extends State<Editor> {
                             icon: const Icon(Icons.download_outlined),
                             label: const Text('Export to PDF'),
                           ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'CSV Export',
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'This uses the current inventory selection, including any active filters from the home screen.',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          const SizedBox(height: 16),
+                          FilledButton.icon(
+                            onPressed: () async {
+                              CsvGenerator(
+                                widget.filteredItems ?? widget.c.items,
+                                widget.c,
+                              ).generateCsv();
+                            },
+                            icon: const Icon(Icons.download_outlined),
+                            label: const Text('Export to CSV'),
+                          ),
                         ],
                       ),
                     ),
@@ -468,7 +551,7 @@ class _EditorState extends State<Editor> {
                           onFieldSubmitted: (_) => _submitTag(),
                           decoration: const InputDecoration(
                             labelText: 'Name',
-                            hintText: 'Office, Camera, Seasonal...',
+                            hintText: 'Color, Size, Season...',
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -506,6 +589,7 @@ class _EditorState extends State<Editor> {
   }
 }
 
+/// Settings screen for inventory structure, appearance, and export actions.
 class Menu extends StatefulWidget {
   final Collections c;
   final List<Item>? filteredItems;
@@ -618,15 +702,6 @@ class _MenuState extends State<Menu> {
               _PanelCard(
                 child: Column(
                   children: [
-                    FocusTraversalOrder(
-                      order: const NumericFocusOrder(1),
-                      child: MenuItem(
-                        c: widget.c,
-                        filteredItems: widget.filteredItems,
-                        name: 'Locations',
-                      ),
-                    ),
-                    const Divider(height: 1),
                     ListTile(
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 14,
@@ -670,8 +745,20 @@ class _MenuState extends State<Menu> {
                         ],
                         selected: {widget.themeMode},
                         onSelectionChanged: (selection) {
+                          if (selection.isEmpty) {
+                            return;
+                          }
                           widget.onThemeModeChanged(selection.first);
                         },
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    FocusTraversalOrder(
+                      order: const NumericFocusOrder(1),
+                      child: MenuItem(
+                        c: widget.c,
+                        filteredItems: widget.filteredItems,
+                        name: 'Locations',
                       ),
                     ),
                     const Divider(height: 1),
@@ -731,6 +818,43 @@ class _MenuState extends State<Menu> {
                         c: widget.c,
                         filteredItems: widget.filteredItems,
                         name: 'Export',
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    FocusTraversalOrder(
+                      order: const NumericFocusOrder(6),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 4,
+                        ),
+                        minVerticalPadding: 14,
+                        leading: Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .primaryContainer
+                                .withValues(alpha: 0.55),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Icon(
+                            Icons.info_outline,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                        title: const Text('About'),
+                        subtitle: const Text(
+                          'Learn more about Shelfwise and privacy.',
+                        ),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AboutPage(),
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -868,7 +992,7 @@ class _OptionEditorBodyState extends State<_OptionEditorBody> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Add ${widget.name.substring(0, widget.name.length - 1)}',
+                    'Add ${widget.name}',
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const SizedBox(height: 8),

@@ -1,6 +1,7 @@
 import 'collections.dart';
 import 'package:flutter/material.dart';
 
+/// Manages the options belonging to a single inventory tag.
 class EditTag extends StatefulWidget {
   final String tag;
   final Collections collections;

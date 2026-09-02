@@ -4,8 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+// Shared image storage and display helpers used by the item editors and detail views.
 const String _defaultImageMimeType = 'image/jpeg';
 
+/// Returns whether [source] contains an inline base64-encoded image.
 bool isDataImageUri(String source) {
   return source.startsWith('data:image/');
 }
@@ -65,6 +67,7 @@ Uint8List? decodeImageFromDataUri(String source) {
   }
 }
 
+/// Builds an image from an inline URI, remote URL, or device file with a fallback widget.
 Widget buildInventoryImage({
   required String source,
   required double width,

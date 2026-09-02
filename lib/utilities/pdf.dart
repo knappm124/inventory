@@ -7,12 +7,14 @@ import 'collections.dart';
 import 'image_utils.dart';
 import 'dart:io';
 
+/// Builds and shares a PDF table for the selected inventory items.
 class PdfGenerator {
   final pw.Document pdf = pw.Document();
   final List<Item> items;
 
   PdfGenerator(this.items);
 
+  /// Resolves stored images from data URIs, URLs, local files, or bundled assets.
   Future<Uint8List?> _loadImageBytes(String? source) async {
     final rawSource = source?.trim();
     if (rawSource == null || rawSource.isEmpty) {
@@ -141,7 +143,8 @@ class PdfGenerator {
     );
 
     final savedFile = await pdf.save();
-    final fileName = 'inventory_${DateTime.now().year.toString()}_${DateTime.now().month.toString()}_${DateTime.now().day.toString()}.pdf';
+    final fileName =
+        'inventory_${DateTime.now().year.toString()}_${DateTime.now().month.toString()}_${DateTime.now().day.toString()}.pdf';
     await Printing.sharePdf(bytes: savedFile, filename: fileName);
   }
 }

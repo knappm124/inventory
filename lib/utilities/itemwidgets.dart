@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:inventory/utilities/editing.dart';
+import 'editing.dart';
 
 import 'collections.dart';
 import 'image_utils.dart';
 
+/// Edit and delete actions for an item, including an undoable delete.
 class ItemIcons extends StatelessWidget {
   final Item i;
   final Collections collections;
@@ -91,6 +92,7 @@ class ItemIcons extends StatelessWidget {
   }
 }
 
+/// Tappable inventory-list row with item details and low-stock state.
 class ItemRow extends StatelessWidget {
   final Item i;
   final int index;
@@ -355,6 +357,7 @@ class ItemRow extends StatelessWidget {
   }
 }
 
+/// Full detail screen where an item's quantity and metadata can be inspected.
 class EditableItem extends StatefulWidget {
   final Item i;
   final Collections collections;
@@ -860,6 +863,7 @@ class _EditableItemState extends State<EditableItem> {
   }
 }
 
+/// Summary header for the item detail screen.
 class EditableItemHeader extends StatelessWidget {
   final Item i;
   final Collections collections;
