@@ -21,6 +21,7 @@ class _EditingItemState extends State<EditingItem> {
   final TextEditingController _quantityController = TextEditingController();
   late final Map<String, int> _locationQuantities;
   String? _status;
+  late bool _ignoreLowInventory;
   late List<String> _imagePaths;
   final Map<String, Set<String>> _selectedTagValues = {};
 
@@ -45,6 +46,7 @@ class _EditingItemState extends State<EditingItem> {
         ? '1'
         : _locationQuantities.values.first.toString();
     _status = widget.i.status;
+    _ignoreLowInventory = widget.i.ignoreLowInventory;
     _imagePaths = List<String>.from(widget.i.images);
 
     // Copy existing tag selections from the item
@@ -113,7 +115,7 @@ class _EditingItemState extends State<EditingItem> {
       _imagePaths.isEmpty ? null : _imagePaths.first,
       _imagePaths,
       selectedTags,
-      widget.i.ignoreLowInventory,
+      _ignoreLowInventory,
     );
 
     widget.collections.editItem(updatedItem);
@@ -285,6 +287,17 @@ class _EditingItemState extends State<EditingItem> {
                               ),
                             ),
                           ],
+                          const Divider(height: 28),
+                          SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: const Text('Ignore low stock threshold'),
+                            subtitle: const Text(
+                              'Never flag this item as low stock.',
+                            ),
+                            value: _ignoreLowInventory,
+                            onChanged: (value) =>
+                                setState(() => _ignoreLowInventory = value),
+                          ),
                           if (tagRows.isNotEmpty) ...[
                             const Divider(height: 28),
                             EditorSectionBlock(

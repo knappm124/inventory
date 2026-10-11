@@ -1312,7 +1312,10 @@ class _ScrollState extends State<Scroll> {
     final totalItems = widget.collections.items.length;
     final visibleCount = itemsToDisplay.length;
     final lowStockCount = widget.collections.items
-        .where((item) => item.totalQuantity <= widget.lowStockThreshold)
+        .where((item) =>
+              !item.ignoreLowInventory &&
+              item.totalQuantity <= widget.lowStockThreshold,
+        )
         .length;
     final inventoryValue = widget.collections.items.fold<double>(
       0,

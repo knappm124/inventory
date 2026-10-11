@@ -44,7 +44,8 @@ class FilterCriteria {
       if (location != null) {
         matchLocation = item.hasLocation(location!);
       }
-      final matchLowStock = !lowStockOnly || item.totalQuantity <= lowStockThreshold;
+      final matchLowStock = !lowStockOnly ||
+          (!item.ignoreLowInventory && item.totalQuantity <= lowStockThreshold);
       final matchPrice = item.priceBetween(range.start, range.end);
 
       final matchTags = tagFilters.entries.every((entry) {

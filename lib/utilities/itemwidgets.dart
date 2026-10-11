@@ -113,7 +113,7 @@ class ItemRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final isLowStock = i.totalQuantity <= lowStockThreshold;
+    final isLowStock = !i.ignoreLowInventory && i.totalQuantity <= lowStockThreshold;
     final imageCount = i.images.isNotEmpty
         ? i.images.length
         : ((i.img?.isNotEmpty ?? false) ? 1 : 0);
@@ -442,7 +442,7 @@ class _EditableItemState extends State<EditableItem> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final images = _item.images;
-    final isLowStock = _item.totalQuantity <= 5;
+    final isLowStock = !_item.ignoreLowInventory && _item.totalQuantity <= 5;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Item Details')),

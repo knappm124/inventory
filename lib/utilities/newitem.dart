@@ -24,6 +24,7 @@ class _NewItemState extends State<NewItem> {
   final TextEditingController _quantityController = TextEditingController();
   final Map<String, int> _locationQuantities = {};
   late String? _status;
+  bool _ignoreLowInventory = false;
   List<String> _imagePaths = <String>[];
   final Map<String, Set<String>> _selectedTagValues = {};
 
@@ -130,6 +131,7 @@ class _NewItemState extends State<NewItem> {
       _imagePaths.isEmpty ? null : _imagePaths.first,
       _imagePaths,
       selectedTags,
+      _ignoreLowInventory,
     );
 
     widget.collections.addItem(newItem);
@@ -308,6 +310,17 @@ class _NewItemState extends State<NewItem> {
                                 ),
                               ),
                             ],
+                            const Divider(height: 28),
+                            SwitchListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: const Text('Ignore low stock threshold'),
+                              subtitle: const Text(
+                                'Never flag this item as low stock.',
+                              ),
+                              value: _ignoreLowInventory,
+                              onChanged: (value) =>
+                                  setState(() => _ignoreLowInventory = value),
+                            ),
                             if (tagRows.isNotEmpty) ...[
                               const Divider(height: 28),
                               EditorSectionBlock(
