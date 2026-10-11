@@ -270,7 +270,9 @@ class FileMethods {
       final map = Map<String, dynamic>.from(entry);
       final id = map['id'];
       final quantity = map['quantity'];
-      if (id is String && (quantity == null || quantity is! num)) {
+      if (id is String &&
+          map['locationAndQuantity'] is! Map &&
+          (quantity == null || quantity is! num)) {
         legacyIds.add(id);
       }
     }
@@ -281,7 +283,9 @@ class FileMethods {
 
     for (final item in items) {
       if (legacyIds.contains(item.id)) {
-        item.setQuantity(1);
+        for (final location in item.locationAndQuantity.keys.toList()) {
+          item.setQuantity(location, 1);
+        }
       }
     }
   }
@@ -808,7 +812,7 @@ class Collections {
 
   Collections removeLocation(String l) {
     for (Item i in items) {
-      if (i.location == l) {
+      if (i.hasLocation(l)) {
         throw Exception(
           "Cannot remove location $l because it is in use by item ${i.name}.",
         );
@@ -860,9 +864,7 @@ class Collections {
     locations.add(nextLocation);
 
     for (final item in items) {
-      if (item.location == previousLocation) {
-        item.setLocation(nextLocation);
-      }
+      item.renameLocation(previousLocation, nextLocation);
     }
 
     persistChanges();
@@ -953,24 +955,24 @@ class Item {
   String _id;
   String _name;
   double _price;
-  int _quantity;
-  String? _location;
+  Map<String, int> _locationAndQuantity;
   String? _status;
   String? _img;
   List<String> _images;
   Map<String, Set<String>>? _tags;
+  bool _ignoreLowInventory;
 
   Item(
     this._id,
     this._name,
     this._price,
-    this._quantity,
-    this._location,
+    this._locationAndQuantity,
     this._status,
     this._img,
     List<String>? images,
-    this._tags,
-  ) : _images = _normalizeImages(primaryImage: _img, images: images);
+    this._tags, [
+    this._ignoreLowInventory = false,
+  ]) : _images = _normalizeImages(primaryImage: _img, images: images);
 
   static List<String> _normalizeImages({
     String? primaryImage,
@@ -1003,16 +1005,22 @@ class Item {
       normalizedTags[key] = sortedValues;
     }
 
+    final sortedLocation = _locationAndQuantity.keys.toList()..sort();
+    final normalizedLocations = <String, int>{};
+    for (final key in sortedLocation) {
+      normalizedLocations[key] = _locationAndQuantity[key] ?? 0;
+    }
+
     return {
       'id': _id,
       'name': _name,
       'price': _price,
-      'quantity': _quantity,
-      'location': _location,
+      'locationAndQuantity': normalizedLocations,
       'status': _status,
       'img': _img,
       'images': _images,
       'tags': normalizedTags,
+      'ignoreLowInventory': ignoreLowInventory,
     };
   }
 
@@ -1033,19 +1041,29 @@ class Item {
         ? rawImages.map((entry) => entry.toString()).toList()
         : null;
     final primaryImage = json['img'] as String?;
+    final rawLocations = json['locationAndQuantity'];
+    final locationAndQuantity = rawLocations is Map
+        ? rawLocations.map(
+            (key, value) =>
+                MapEntry(key.toString(), (value as num).toInt()),
+          )
+        : <String, int>{
+            (json['location'] is String
+                    ? json['location'] as String
+                    : Item.unassignedLocation):
+                (json['quantity'] as num?)?.toInt() ?? 1,
+          };
 
     return Item(
       json['id'] as String,
       json['name'] as String,
       (json['price'] as num).toDouble(),
-      (json['quantity'] is num)
-          ? (json['quantity'] as num).toInt()
-          : int.tryParse(json['quantity']?.toString() ?? '') ?? 1,
-      json['location'] as String?,
+      locationAndQuantity,
       json['status'] as String?,
       primaryImage,
       images,
       tags,
+      json['ignoreLowInventory'] as bool? ?? false,
     );
   }
 
@@ -1070,7 +1088,7 @@ class Item {
   }
 
   bool hasLocation(String location) {
-    return (location == _location);
+    return _locationAndQuantity.containsKey(location);
   }
 
   List<String> getAllOptions(String tagName) {
@@ -1085,12 +1103,31 @@ class Item {
   String get id => _id;
   String get name => _name;
   double get price => _price;
-  int get quantity => _quantity;
-  String? get location => _location;
+  Map<String, int> get locationAndQuantity => _locationAndQuantity;
+  static const String unassignedLocation = 'Unassigned';
+
+  int get totalQuantity =>
+      _locationAndQuantity.values.fold(0, (sum, value) => sum + value);
+  String? get locationsLabel => _locationAndQuantity.isEmpty
+      ? null
+      : _locationAndQuantity.entries
+            .map((e) => _locationAndQuantity.length == 1
+                ? e.key
+                : '${e.key} (${e.value})')
+            .join(', ');
   String? get status => _status;
   String? get img => _img;
   List<String> get images => List<String>.unmodifiable(_images);
   Map<String, Set<String>>? get tags => _tags;
+  bool get ignoreLowInventory => _ignoreLowInventory;
+
+  void toggleLowInventory(){
+    if (_ignoreLowInventory){
+      _ignoreLowInventory = false;
+    } else {
+      _ignoreLowInventory = true;
+    }
+  }
 
   void setName(String name) {
     _name = name;
@@ -1100,12 +1137,25 @@ class Item {
     _price = price;
   }
 
-  void setQuantity(int quantity) {
-    _quantity = quantity;
+  void setQuantity(String location, int quantity) {
+    if (!_locationAndQuantity.containsKey(location)) {
+      throw Exception("Location does not exist");
+    }
+    _locationAndQuantity[location] = quantity;
   }
 
-  void setLocation(String? location) {
-    _location = location;
+  void renameLocation(String previous, String next) {
+    final quantity = _locationAndQuantity.remove(previous);
+    if (quantity != null) {
+      _locationAndQuantity[next] = quantity;
+    }
+  }
+
+  void addLocation(String location) {
+    if (_locationAndQuantity.containsKey(location)) {
+      throw Exception("Location already exists");
+    }
+    _locationAndQuantity[location] = 0;
   }
 
   void setStatus(String? status) {

@@ -15,7 +15,8 @@ Item makeItem(
   List<String>? images,
   Map<String, Set<String>>? tags,
 }) {
-  return Item(id, name, price, quantity, location, status, image, images, tags);
+  final locations = <String, int>{if (location != null) location: quantity};
+  return Item(id, name, price, locations, status, image, images, tags);
 }
 
 void main() {
@@ -72,7 +73,7 @@ void main() {
         }
       ]''');
 
-      expect(items.single.quantity, 1);
+      expect(items.single.totalQuantity, 1);
       expect(items.single.tags, isEmpty);
       expect(items.single.images, ['legacy.jpg']);
     });

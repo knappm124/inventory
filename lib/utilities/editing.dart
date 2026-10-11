@@ -19,7 +19,7 @@ class _EditingItemState extends State<EditingItem> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
   final TextEditingController _quantityController = TextEditingController();
-  String? _location;
+  late final Map<String, int> _locationQuantities;
   String? _status;
   late List<String> _imagePaths;
   final Map<String, Set<String>> _selectedTagValues = {};
@@ -40,8 +40,10 @@ class _EditingItemState extends State<EditingItem> {
     // Initialize controllers and fields from the passed-in item
     _nameController.text = widget.i.name;
     _priceController.text = widget.i.price.toStringAsFixed(2);
-    _quantityController.text = widget.i.quantity.toString();
-    _location = widget.i.location;
+    _locationQuantities = Map<String, int>.from(widget.i.locationAndQuantity);
+    _quantityController.text = _locationQuantities.values.isEmpty
+        ? '1'
+        : _locationQuantities.values.first.toString();
     _status = widget.i.status;
     _imagePaths = List<String>.from(widget.i.images);
 
@@ -57,6 +59,12 @@ class _EditingItemState extends State<EditingItem> {
     _priceController.dispose();
     _quantityController.dispose();
     super.dispose();
+  }
+
+  List<String> _locationOptions() {
+    final options = widget.collections.getAllLocations().toSet()
+      ..addAll(widget.i.locationAndQuantity.keys);
+    return options.toList()..sort();
   }
 
   void _saveItem() {
@@ -77,7 +85,18 @@ class _EditingItemState extends State<EditingItem> {
     final quantityText = _quantityController.text.trim();
 
     final price = double.tryParse(priceText) ?? 0.00;
-    final quantity = int.tryParse(quantityText) ?? 1;
+    final hasLocationOptions = _locationOptions().isNotEmpty;
+    if (hasLocationOptions && _locationQuantities.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Select at least one location and enter a quantity.'),
+        ),
+      );
+      return;
+    }
+    final updatedLocations = hasLocationOptions
+        ? Map<String, int>.from(_locationQuantities)
+        : {Item.unassignedLocation: int.tryParse(quantityText) ?? 1};
     final selectedTags = <String, Set<String>>{};
     _selectedTagValues.forEach((tagName, values) {
       if (values.isNotEmpty) {
@@ -89,12 +108,12 @@ class _EditingItemState extends State<EditingItem> {
       widget.i.id,
       name,
       price,
-      quantity,
-      _location,
+      updatedLocations,
       _status,
       _imagePaths.isEmpty ? null : _imagePaths.first,
       _imagePaths,
       selectedTags,
+      widget.i.ignoreLowInventory,
     );
 
     widget.collections.editItem(updatedItem);
@@ -105,11 +124,7 @@ class _EditingItemState extends State<EditingItem> {
 
   @override
   Widget build(BuildContext context) {
-    final locationOptions = widget.collections.getAllLocations().toList()
-      ..sort();
-    if (_location != null && !locationOptions.contains(_location)) {
-      locationOptions.insert(0, _location!);
-    }
+    final locationOptions = _locationOptions();
 
     final statusOptions = widget.collections.getAllStatuses().toList()..sort();
     if (_status != null && !statusOptions.contains(_status)) {
@@ -219,34 +234,40 @@ class _EditingItemState extends State<EditingItem> {
                                     return null;
                                   },
                                 ),
-                                NewQuantity(
-                                  controller: _quantityController,
-                                  validator: (value) {
-                                    final trimmed = value?.trim() ?? '';
-                                    if (trimmed.isEmpty) {
-                                      return 'Quantity is required.';
-                                    }
-                                    final parsed = int.tryParse(trimmed);
-                                    if (parsed == null || parsed <= 0) {
-                                      return 'Enter a valid positive integer.';
-                                    }
-                                    return null;
-                                  },
-                                ),
+                                if (locationOptions.isEmpty)
+                                  NewQuantity(
+                                    controller: _quantityController,
+                                    validator: (value) {
+                                      final trimmed = value?.trim() ?? '';
+                                      if (trimmed.isEmpty) {
+                                        return 'Quantity is required.';
+                                      }
+                                      final parsed = int.tryParse(trimmed);
+                                      if (parsed == null || parsed <= 0) {
+                                        return 'Enter a valid positive integer.';
+                                      }
+                                      return null;
+                                    },
+                                  ),
                               ],
                             ),
                           ),
                           if (locationOptions.isNotEmpty) ...[
                             const Divider(height: 28),
                             EditorSectionBlock(
-                              title: 'Location',
+                              title: 'Locations',
                               subtitle:
-                                  'Move it to the right place in your inventory.',
-                              child: LocationChoice(
+                                  'Select every place the item is stored and enter the quantity for each.',
+                              child: MultiLocationChoice(
                                 options: locationOptions,
-                                value: _location ?? locationOptions.first,
-                                onChanged: (value) =>
-                                    setState(() => _location = value),
+                                quantities: _locationQuantities,
+                                onChanged: (location, quantity) => setState(() {
+                                  if (quantity == null) {
+                                    _locationQuantities.remove(location);
+                                  } else {
+                                    _locationQuantities[location] = quantity;
+                                  }
+                                }),
                               ),
                             ),
                           ],

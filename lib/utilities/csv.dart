@@ -41,8 +41,8 @@ class CsvGenerator {
       listOfStrings.add(item.id.toString());
       listOfStrings.add(item.name);
       listOfStrings.add(item.price.toString());
-      listOfStrings.add(item.quantity.toString());
-      listOfStrings.add(item.location ?? "No Location");
+      listOfStrings.add(item.totalQuantity.toString());
+      listOfStrings.add(item.locationsLabel ?? "No Location");
       listOfStrings.add(item.status ?? "No Status");
       for (var tag in c.tags) {
         final tagValues = item.containsTag(tag.name)

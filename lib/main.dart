@@ -809,7 +809,9 @@ class _ScrollState extends State<Scroll> {
         ? baseItems
         : baseItems.where((item) {
             return item.name.toLowerCase().contains(query) ||
-                (item.location?.toLowerCase().contains(query) ?? false) ||
+                (item.locationAndQuantity.keys.any(
+                  (l) => l.toLowerCase().contains(query),
+                )) ||
                 (item.status?.toLowerCase().contains(query) ?? false);
           }).toList();
 
@@ -1310,11 +1312,11 @@ class _ScrollState extends State<Scroll> {
     final totalItems = widget.collections.items.length;
     final visibleCount = itemsToDisplay.length;
     final lowStockCount = widget.collections.items
-        .where((item) => item.quantity <= widget.lowStockThreshold)
+        .where((item) => item.totalQuantity <= widget.lowStockThreshold)
         .length;
     final inventoryValue = widget.collections.items.fold<double>(
       0,
-      (sum, item) => sum + (item.price * item.quantity),
+      (sum, item) => sum + (item.price * item.totalQuantity),
     );
 
     String emptyStateMessage = 'No items yet. Tap + to add your first item.';

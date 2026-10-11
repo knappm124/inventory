@@ -22,7 +22,7 @@ class _NewItemState extends State<NewItem> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
   final TextEditingController _quantityController = TextEditingController();
-  late String? _location;
+  final Map<String, int> _locationQuantities = {};
   late String? _status;
   List<String> _imagePaths = <String>[];
   final Map<String, Set<String>> _selectedTagValues = {};
@@ -40,20 +40,13 @@ class _NewItemState extends State<NewItem> {
   @override
   void initState() {
     super.initState();
-    final locationOptions = widget.collections.getAllLocations().toList();
     final statusOptions = widget.collections.getAllStatuses().toList();
 
-    _location = locationOptions.isNotEmpty ? locationOptions.first : null;
     _status = statusOptions.isNotEmpty ? statusOptions.first : null;
   }
 
   List<String> _locationOptions() {
-    final options = widget.collections.getAllLocations().toList()..sort();
-    final currentLocation = _location;
-    if (currentLocation != null && !options.contains(currentLocation)) {
-      options.insert(0, currentLocation);
-    }
-    return options;
+    return widget.collections.getAllLocations().toList()..sort();
   }
 
   List<String> _statusOptions() {
@@ -103,10 +96,21 @@ class _NewItemState extends State<NewItem> {
     }
 
     final price = double.tryParse(priceText) ?? 0.0;
-    final quantity = int.tryParse(_quantityController.text.trim()) ?? 1;
-    final selectedLocation = (_location?.trim().isNotEmpty ?? false)
-        ? _location
-        : null;
+    final hasLocationOptions = _locationOptions().isNotEmpty;
+    if (hasLocationOptions && _locationQuantities.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Select at least one location and enter a quantity.'),
+        ),
+      );
+      return;
+    }
+    final locations = hasLocationOptions
+        ? Map<String, int>.from(_locationQuantities)
+        : {
+            Item.unassignedLocation:
+                int.tryParse(_quantityController.text.trim()) ?? 1,
+          };
     final selectedStatus = (_status?.trim().isNotEmpty ?? false)
         ? _status
         : null;
@@ -121,8 +125,7 @@ class _NewItemState extends State<NewItem> {
       DateTime.now().millisecondsSinceEpoch.toString(),
       name,
       price,
-      quantity,
-      selectedLocation,
+      locations,
       selectedStatus,
       _imagePaths.isEmpty ? null : _imagePaths.first,
       _imagePaths,
@@ -185,12 +188,6 @@ class _NewItemState extends State<NewItem> {
                         title: 'Create a new inventory item',
                         subtitle:
                             'Capture the essentials, attach photos, and organize the item so it is easy to find later.',
-                        trailing: EditorSummaryPill(
-                          icon: Icons.add_box_outlined,
-                          label: _imagePaths.isEmpty
-                              ? 'Ready for details'
-                              : '${_imagePaths.length} photos selected',
-                        ),
                         child: Padding(
                           padding: const EdgeInsets.only(top: 18),
                           child: ImageUploaderScreen(
@@ -248,23 +245,24 @@ class _NewItemState extends State<NewItem> {
                                       },
                                     ),
                                   ),
-                                  FocusTraversalOrder(
-                                    order: const NumericFocusOrder(3),
-                                    child: NewQuantity(
-                                      controller: _quantityController,
-                                      validator: (value) {
-                                        final trimmed = value?.trim() ?? '';
-                                        if (trimmed.isEmpty) {
-                                          return 'Quantity is required.';
-                                        }
-                                        final parsed = int.tryParse(trimmed);
-                                        if (parsed == null || parsed <= 0) {
-                                          return 'Enter a valid positive integer.';
-                                        }
-                                        return null;
-                                      },
+                                  if (locationOptions.isEmpty)
+                                    FocusTraversalOrder(
+                                      order: const NumericFocusOrder(3),
+                                      child: NewQuantity(
+                                        controller: _quantityController,
+                                        validator: (value) {
+                                          final trimmed = value?.trim() ?? '';
+                                          if (trimmed.isEmpty) {
+                                            return 'Quantity is required.';
+                                          }
+                                          final parsed = int.tryParse(trimmed);
+                                          if (parsed == null || parsed <= 0) {
+                                            return 'Enter a valid positive integer.';
+                                          }
+                                          return null;
+                                        },
+                                      ),
                                     ),
-                                  ),
                                 ],
                               ),
                             ),
@@ -273,14 +271,22 @@ class _NewItemState extends State<NewItem> {
                               EditorSectionBlock(
                                 title: 'Location',
                                 subtitle:
-                                    'Place the item where you expect to find it.',
+                                    'Select every place the item is stored and enter the quantity for each.',
                                 child: FocusTraversalOrder(
                                   order: const NumericFocusOrder(4),
-                                  child: LocationChoice(
+                                  child: MultiLocationChoice(
                                     options: locationOptions,
-                                    value: _location ?? locationOptions.first,
-                                    onChanged: (value) =>
-                                        setState(() => _location = value),
+                                    quantities: _locationQuantities,
+                                    onChanged: (location, quantity) => setState(
+                                      () {
+                                        if (quantity == null) {
+                                          _locationQuantities.remove(location);
+                                        } else {
+                                          _locationQuantities[location] =
+                                              quantity;
+                                        }
+                                      },
+                                    ),
                                   ),
                                 ),
                               ),
@@ -425,49 +431,155 @@ class NewQuantity extends StatelessWidget {
   }
 }
 
-/// Choice chip for the single location assigned to an item.
-class LocationChoice extends StatelessWidget {
+/// Multi-select location chips; selecting one prompts for its quantity.
+class MultiLocationChoice extends StatelessWidget {
   final List<String> options;
-  final String value;
-  final ValueChanged<String> onChanged;
+  final Map<String, int> quantities;
+  final void Function(String location, int? quantity) onChanged;
 
-  const LocationChoice({
+  const MultiLocationChoice({
     super.key,
     required this.options,
-    required this.value,
+    required this.quantities,
     required this.onChanged,
   });
 
+  Future<int?> _askQuantity(BuildContext context, String location) {
+    return showDialog<int>(
+      context: context,
+      builder: (dialogContext) => _LocationQuantityDialog(
+        location: location,
+        initialQuantity: quantities[location] ?? 1,
+      ),
+    );
+  }
+
+  Future<void> _select(BuildContext context, String location) async {
+    final quantity = await _askQuantity(context, location);
+    if (quantity != null) {
+      onChanged(location, quantity);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final safeValue = options.contains(value)
-        ? value
-        : (options.isNotEmpty ? options.first : value);
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
       child: Semantics(
         container: true,
-        label: 'Item location',
+        label: 'Item locations',
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Location', style: Theme.of(context).textTheme.titleSmall),
+            Text('Locations', style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: options.map((option) {
-                return ChoiceChip(
-                  label: Text(option),
-                  selected: option == safeValue,
-                  onSelected: (_) => onChanged(option),
+                final quantity = quantities[option];
+                final selected = quantity != null;
+                return FilterChip(
+                  label: Text(selected ? '$option: $quantity' : option),
+                  selected: selected,
+                  onSelected: (isSelected) {
+                    if (isSelected) {
+                      _select(context, option);
+                    } else {
+                      onChanged(option, null);
+                    }
+                  },
                 );
               }).toList(),
             ),
+            if (quantities.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Wrap(
+                  children: [
+                    for (final entry in quantities.entries)
+                      TextButton(
+                        onPressed: () => _select(context, entry.key),
+                        child: Text('Edit ${entry.key} quantity'),
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Dialog that owns its controller so it is disposed after the route closes.
+class _LocationQuantityDialog extends StatefulWidget {
+  final String location;
+  final int initialQuantity;
+
+  const _LocationQuantityDialog({
+    required this.location,
+    required this.initialQuantity,
+  });
+
+  @override
+  State<_LocationQuantityDialog> createState() =>
+      _LocationQuantityDialogState();
+}
+
+class _LocationQuantityDialogState extends State<_LocationQuantityDialog> {
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initialQuantity.toString(),
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (_formKey.currentState?.validate() ?? false) {
+      Navigator.of(context).pop(int.parse(_controller.text.trim()));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Quantity in ${widget.location}'),
+      content: Form(
+        key: _formKey,
+        child: TextFormField(
+          controller: _controller,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          inputFormatters: <TextInputFormatter>[
+            FilteringTextInputFormatter.digitsOnly,
+          ],
+          decoration: const InputDecoration(
+            labelText: 'Quantity',
+            hintText: '1',
+          ),
+          validator: (value) {
+            final parsed = int.tryParse(value?.trim() ?? '');
+            return parsed == null || parsed <= 0
+                ? 'Enter a valid positive integer.'
+                : null;
+          },
+          onFieldSubmitted: (_) => _submit(),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(onPressed: _submit, child: const Text('Save')),
+      ],
     );
   }
 }

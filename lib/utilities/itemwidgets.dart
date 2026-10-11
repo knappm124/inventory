@@ -113,7 +113,7 @@ class ItemRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final isLowStock = i.quantity <= lowStockThreshold;
+    final isLowStock = i.totalQuantity <= lowStockThreshold;
     final imageCount = i.images.isNotEmpty
         ? i.images.length
         : ((i.img?.isNotEmpty ?? false) ? 1 : 0);
@@ -133,7 +133,7 @@ class ItemRow extends StatelessWidget {
       child: Semantics(
         button: true,
         label:
-            '${i.name}, quantity ${i.quantity}, ${i.location ?? 'no location'}, ${isLowStock ? 'low stock' : 'in stock'}',
+            '${i.name}, quantity ${i.totalQuantity}, ${i.locationsLabel ?? 'no location'}, ${isLowStock ? 'low stock' : 'in stock'}',
         hint: 'Open item details',
         child: Material(
           color: colorScheme.surface,
@@ -271,7 +271,7 @@ class ItemRow extends StatelessWidget {
                                     ),
                                     const SizedBox(height: 6),
                                     Text(
-                                      i.location ?? 'No location set',
+                                      i.locationsLabel ?? 'No location set',
                                       style: theme.textTheme.bodyMedium
                                           ?.copyWith(
                                             color: colorScheme.onSurface,
@@ -307,7 +307,7 @@ class ItemRow extends StatelessWidget {
                               _buildInlineMeta(
                                 context,
                                 icon: Icons.inventory_2_outlined,
-                                label: 'Qty ${i.quantity}',
+                                label: 'Qty ${i.totalQuantity}',
                               ),
                               _buildInlineMeta(
                                 context,
@@ -405,22 +405,28 @@ class _EditableItemState extends State<EditableItem> {
     return images[_selectedImageIndex];
   }
 
-  void _adjustQuantity(int delta) {
-    final nextQuantity = (_item.quantity + delta).clamp(1, 9999999);
-    if (nextQuantity == _item.quantity) {
+  void _adjustQuantity(String target, int delta) {
+    final locations = Map<String, int>.from(_item.locationAndQuantity);
+    final currentQuantity = locations[target];
+    if (currentQuantity == null) {
       return;
     }
+    final nextQuantity = (currentQuantity + delta).clamp(0, 9999999);
+    if (nextQuantity == currentQuantity) {
+      return;
+    }
+    locations[target] = nextQuantity;
 
     final updatedItem = Item(
       _item.id,
       _item.name,
       _item.price,
-      nextQuantity,
-      _item.location,
+      locations,
       _item.status,
       _item.img,
       _item.images,
       _item.tags,
+      _item.ignoreLowInventory,
     );
 
     widget.collections.editItem(updatedItem);
@@ -436,7 +442,7 @@ class _EditableItemState extends State<EditableItem> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final images = _item.images;
-    final isLowStock = _item.quantity <= 5;
+    final isLowStock = _item.totalQuantity <= 5;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Item Details')),
@@ -491,7 +497,8 @@ class _EditableItemState extends State<EditableItem> {
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    _item.location ?? 'No location assigned',
+                                    _item.locationsLabel ??
+                                        'No location assigned',
                                     style: theme.textTheme.bodyLarge?.copyWith(
                                       color: colorScheme.onSurface,
                                     ),
@@ -510,7 +517,7 @@ class _EditableItemState extends State<EditableItem> {
                                       _buildInlineMeta(
                                         context,
                                         icon: Icons.inventory_2_outlined,
-                                        label: 'Qty ${_item.quantity}',
+                                        label: 'Qty ${_item.totalQuantity}',
                                       ),
                                       _buildInlineMeta(
                                         context,
@@ -774,13 +781,13 @@ class _EditableItemState extends State<EditableItem> {
                                 _buildDetailStat(
                                   context,
                                   label: 'Quantity',
-                                  value: '${_item.quantity}',
+                                  value: '${_item.totalQuantity}',
                                   icon: Icons.inventory_2_outlined,
                                 ),
                                 _buildDetailStat(
                                   context,
                                   label: 'Location',
-                                  value: _item.location ?? 'Not set',
+                                  value: _item.locationsLabel ?? 'Not set',
                                   icon: Icons.place_outlined,
                                 ),
                                 _buildDetailStat(
@@ -864,12 +871,12 @@ class _EditableItemState extends State<EditableItem> {
 }
 
 /// Summary header for the item detail screen.
-class EditableItemHeader extends StatelessWidget {
+class EditableItemHeader extends StatefulWidget {
   final Item i;
   final Collections collections;
   final ValueChanged<Item> onItemUpdated;
   final VoidCallback onItemsChanged;
-  final ValueChanged<int> onAdjustQuantity;
+  final void Function(String location, int delta) onAdjustQuantity;
 
   const EditableItemHeader({
     super.key,
@@ -881,9 +888,24 @@ class EditableItemHeader extends StatelessWidget {
   });
 
   @override
+  State<EditableItemHeader> createState() => _EditableItemHeaderState();
+}
+
+class _EditableItemHeaderState extends State<EditableItemHeader> {
+  String? _selectedLocation;
+
+  Item get i => widget.i;
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final locations = i.locationAndQuantity;
+    final locationNames = locations.keys.toList()..sort();
+    final selected = locations.containsKey(_selectedLocation)
+        ? _selectedLocation
+        : (locationNames.length == 1 ? locationNames.first : null);
+    final selectedQuantity = selected == null ? null : locations[selected];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -913,12 +935,41 @@ class EditableItemHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Quantity', style: theme.textTheme.labelLarge),
+              Text('Location', style: theme.textTheme.labelLarge),
+              const SizedBox(height: 10),
+              if (locationNames.isEmpty)
+                Text(
+                  'No locations set. Edit the item to add one.',
+                  style: theme.textTheme.bodyMedium,
+                )
+              else
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final name in locationNames)
+                      ChoiceChip(
+                        label: Text('$name (${locations[name]})'),
+                        selected: name == selected,
+                        onSelected: (_) =>
+                            setState(() => _selectedLocation = name),
+                      ),
+                  ],
+                ),
+              const SizedBox(height: 14),
+              Text(
+                selected == null
+                    ? 'Pick a location to adjust its quantity'
+                    : 'Quantity in $selected',
+                style: theme.textTheme.labelLarge,
+              ),
               const SizedBox(height: 10),
               Row(
                 children: [
                   IconButton.filledTonal(
-                    onPressed: () => onAdjustQuantity(-1),
+                    onPressed: selected == null
+                        ? null
+                        : () => widget.onAdjustQuantity(selected, -1),
                     icon: const Icon(Icons.remove),
                     tooltip: 'Decrease quantity',
                   ),
@@ -931,7 +982,7 @@ class EditableItemHeader extends StatelessWidget {
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
-                        '${i.quantity}',
+                        selectedQuantity?.toString() ?? '–',
                         textAlign: TextAlign.center,
                         style: theme.textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w800,
@@ -941,7 +992,9 @@ class EditableItemHeader extends StatelessWidget {
                   ),
                   const SizedBox(width: 10),
                   IconButton.filled(
-                    onPressed: () => onAdjustQuantity(1),
+                    onPressed: selected == null
+                        ? null
+                        : () => widget.onAdjustQuantity(selected, 1),
                     icon: const Icon(Icons.add),
                     tooltip: 'Increase quantity',
                   ),
@@ -953,9 +1006,9 @@ class EditableItemHeader extends StatelessWidget {
         const SizedBox(height: 16),
         ItemIcons(
           i: i,
-          collections: collections,
-          onItemUpdated: onItemUpdated,
-          onItemsChanged: onItemsChanged,
+          collections: widget.collections,
+          onItemUpdated: widget.onItemUpdated,
+          onItemsChanged: widget.onItemsChanged,
         ),
       ],
     );
