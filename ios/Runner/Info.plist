@@ -28,6 +28,10 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Take photos of inventory items to attach to their records.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Select photos of inventory items to attach to their records.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>

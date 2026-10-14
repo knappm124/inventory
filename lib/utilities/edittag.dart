@@ -96,8 +96,8 @@ class _EditTagState extends State<EditTag> {
 
   Future<void> _renameTag() async {
     final newName = await _askForName(
-      title: 'Rename Tag',
-      label: 'Tag name',
+      title: 'Rename Category',
+      label: 'Category name',
       initialValue: _currentTag,
       saveLabel: 'Rename',
     );
@@ -123,8 +123,8 @@ class _EditTagState extends State<EditTag> {
 
   Future<void> _renameOption(String option) async {
     final newOption = await _askForName(
-      title: 'Rename Option',
-      label: 'Option name',
+      title: 'Rename Tag',
+      label: 'Tag name',
       initialValue: option,
       saveLabel: 'Rename',
     );
@@ -172,7 +172,7 @@ class _EditTagState extends State<EditTag> {
         actions: [
           IconButton(
             icon: const Icon(Icons.drive_file_rename_outline),
-            tooltip: 'Rename tag',
+            tooltip: 'Rename category',
             onPressed: _renameTag,
           ),
           const SizedBox(width: 4),
@@ -185,7 +185,7 @@ class _EditTagState extends State<EditTag> {
           children: [
             Card(
               child: sortedOptions.isEmpty
-                  ? const ListTile(title: Text('No options yet'))
+                  ? const ListTile(title: Text('No tags yet'))
                   : Column(
                       children: [
                         for (final option in sortedOptions)
@@ -198,12 +198,12 @@ class _EditTagState extends State<EditTag> {
                                   icon: const Icon(
                                     Icons.drive_file_rename_outline,
                                   ),
-                                  tooltip: 'Rename option',
+                                  tooltip: 'Rename tag',
                                   onPressed: () => _renameOption(option),
                                 ),
                                 IconButton(
                                   icon: const Icon(Icons.delete),
-                                  tooltip: 'Delete option',
+                                  tooltip: 'Delete tag',
                                   onPressed: () {
                                     setState(() {
                                       widget.collections.removeTagOption(
@@ -231,15 +231,15 @@ class _EditTagState extends State<EditTag> {
                         textInputAction: TextInputAction.done,
                         onFieldSubmitted: (_) => _addOption(),
                         decoration: const InputDecoration(
-                          labelText: 'New Option',
-                          hintText: 'Enter a new option for the tag',
+                          labelText: 'New Tag',
+                          hintText: 'Enter a new tag for the category',
                         ),
                       ),
                     ),
                     const SizedBox(width: 10),
                     FilledButton(
                       onPressed: _addOption,
-                      child: const Text('Add Option'),
+                      child: const Text('Add Tag'),
                     ),
                   ],
                 ),

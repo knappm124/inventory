@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -720,6 +721,12 @@ class _ImageUploaderScreenState extends State<ImageUploaderScreen> {
   List<String> _imagePaths = <String>[];
   final ImagePicker _picker = ImagePicker();
 
+  bool get _cameraSupported =>
+      kIsWeb ||
+      (defaultTargetPlatform != TargetPlatform.linux &&
+          defaultTargetPlatform != TargetPlatform.macOS &&
+          defaultTargetPlatform != TargetPlatform.windows);
+
   void _removeImageAt(int index) {
     if (index < 0 || index >= _imagePaths.length) {
       return;
@@ -819,61 +826,83 @@ class _ImageUploaderScreenState extends State<ImageUploaderScreen> {
   Future<void> _pickAndSaveImage() async {
     try {
       final pickedFiles = await _picker.pickMultiImage(imageQuality: 85);
-
-      if (pickedFiles.isEmpty) {
-        return;
-      }
-
-      final newPaths = <String>[];
-      final newPreviewBytes = <Uint8List?>[];
-
-      for (final pickedFile in pickedFiles) {
-        final imageBytes = await pickedFile.readAsBytes();
-        if (imageBytes.isEmpty) {
-          continue;
-        }
-
-        final encodedImage = encodeImageToDataUri(
-          imageBytes,
-          mimeType: pickedFile.mimeType,
-          path: pickedFile.path,
-        );
-
-        if (_imagePaths.contains(encodedImage) ||
-            newPaths.contains(encodedImage)) {
-          continue;
-        }
-
-        newPaths.add(encodedImage);
-        newPreviewBytes.add(imageBytes);
-      }
-
-      if (newPaths.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('No new images were added.')),
-          );
-        }
-        return;
-      }
-
-      final updatedPaths = List<String>.from(_imagePaths)..addAll(newPaths);
-      widget.onImagesChanged(updatedPaths);
-
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _imagePaths = updatedPaths;
-        _previewBytes.addAll(newPreviewBytes);
-      });
+      await _savePickedImages(pickedFiles);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error saving image: $e')));
+      _showImageError(e);
+    }
+  }
+
+  Future<void> _takePhoto() async {
+    try {
+      final photo = await _picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 85,
+      );
+      if (photo == null) {
+        return;
       }
+      await _savePickedImages([photo]);
+    } catch (e) {
+      _showImageError(e);
+    }
+  }
+
+  Future<void> _savePickedImages(List<XFile> pickedFiles) async {
+    if (pickedFiles.isEmpty) {
+      return;
+    }
+
+    final newPaths = <String>[];
+    final newPreviewBytes = <Uint8List?>[];
+
+    for (final pickedFile in pickedFiles) {
+      final imageBytes = await pickedFile.readAsBytes();
+      if (imageBytes.isEmpty) {
+        continue;
+      }
+
+      final encodedImage = encodeImageToDataUri(
+        imageBytes,
+        mimeType: pickedFile.mimeType,
+        path: pickedFile.path,
+      );
+
+      if (_imagePaths.contains(encodedImage) ||
+          newPaths.contains(encodedImage)) {
+        continue;
+      }
+
+      newPaths.add(encodedImage);
+      newPreviewBytes.add(imageBytes);
+    }
+
+    if (newPaths.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No new images were added.')),
+        );
+      }
+      return;
+    }
+
+    final updatedPaths = List<String>.from(_imagePaths)..addAll(newPaths);
+    widget.onImagesChanged(updatedPaths);
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _imagePaths = updatedPaths;
+      _previewBytes.addAll(newPreviewBytes);
+    });
+  }
+
+  void _showImageError(Object error) {
+    if (mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error saving image: $error')));
     }
   }
 
@@ -938,10 +967,25 @@ class _ImageUploaderScreenState extends State<ImageUploaderScreen> {
                             ),
                     ),
                     const SizedBox(height: 16),
-                    FilledButton.icon(
-                      onPressed: _pickAndSaveImage,
-                      icon: const Icon(Icons.upload_file),
-                      label: Text(hasImages ? 'Add Images' : 'Upload Images'),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        FilledButton.icon(
+                          onPressed: _pickAndSaveImage,
+                          icon: const Icon(Icons.photo_library_outlined),
+                          label: Text(
+                            hasImages ? 'Add Images' : 'Upload Images',
+                          ),
+                        ),
+                        if (_cameraSupported)
+                          OutlinedButton.icon(
+                            onPressed: _takePhoto,
+                            icon: const Icon(Icons.camera_alt_outlined),
+                            label: const Text('Take Photo'),
+                          ),
+                      ],
                     ),
                   ],
                 ),

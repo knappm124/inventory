@@ -452,25 +452,25 @@ class _EditorState extends State<Editor> {
             (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
           );
         return Scaffold(
-          appBar: AppBar(title: const Text('Tags')),
+          appBar: AppBar(title: const Text('Categories')),
           resizeToAvoidBottomInset: true,
           body: SafeArea(
             child: ListView(
               padding: _listContentPadding(context),
               children: [
                 _PanelHero(
-                  title: 'Manage tags',
+                  title: 'Manage categories',
                   subtitle:
                       'Keep item classification tidy so filtering and grouping stay useful.',
-                  trailingLabel: '${tags.length} tags',
+                  trailingLabel: '${tags.length} categories',
                   trailingIcon: Icons.sell_outlined,
                 ),
                 const SizedBox(height: 12),
                 _PanelCard(
                   child: tags.isEmpty
                       ? const ListTile(
-                          title: Text('No tags yet'),
-                          subtitle: Text('Add your first tag below.'),
+                          title: Text('No categories yet'),
+                          subtitle: Text('Add your first category below.'),
                         )
                       : Column(
                           children: [
@@ -503,7 +503,7 @@ class _EditorState extends State<Editor> {
                                   children: [
                                     IconButton(
                                       icon: const Icon(Icons.edit_outlined),
-                                      tooltip: 'Edit tag',
+                                      tooltip: 'Edit category',
                                       onPressed: () async {
                                         await Navigator.push(
                                           context,
@@ -522,7 +522,7 @@ class _EditorState extends State<Editor> {
                                     ),
                                     IconButton(
                                       icon: const Icon(Icons.delete_outline),
-                                      tooltip: 'Delete tag',
+                                      tooltip: 'Delete category',
                                       onPressed: () => _removeTag(t.getName()),
                                     ),
                                   ],
@@ -539,7 +539,7 @@ class _EditorState extends State<Editor> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Add Tag',
+                          'Add Category',
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
                         const SizedBox(height: 8),
@@ -575,7 +575,7 @@ class _EditorState extends State<Editor> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text("Unknown tag name: ${widget.tagName}"),
+                Text("Unknown category name: ${widget.tagName}"),
                 const SizedBox(height: 8),
                 FilledButton(
                   onPressed: () => Navigator.pop(context),
